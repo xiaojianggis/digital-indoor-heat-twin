@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Philadelphia Indoor Heat Twin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a lab instrument — controls rail on the left, site map + 3D twin up top, readouts and physics charts below. */
+:root{
+  --bg:#eef0ec; --panel:#ffffff; --ink:#1b2220; --muted:#5b6662; --line:#d6dbd5; --accent:#0e6b70; --accent-soft:#d8ecec;
+  --cool:#3b6fb6; --hot:#c8431c;
+  --display:"Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body:"IBM Plex Sans", "Segoe UI", Roboto, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111614; --panel:#192020; --ink:#e3e9e6; --muted:#97a39e; --line:#2b3533; --accent:#4cb5b9; --accent-soft:#1d3536;
+    --cool:#78a3e0; --hot:#f07a4f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111614; --panel:#192020; --ink:#e3e9e6; --muted:#97a39e; --line:#2b3533; --accent:#4cb5b9; --accent-soft:#1d3536;
+  --cool:#78a3e0; --hot:#f07a4f; color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+h1{font-size:20px;font-weight:800;letter-spacing:-.01em}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+h3{font-size:13px;font-weight:700}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);background:var(--panel)}
+header p{margin:2px 0 0;color:var(--muted);font-size:13px;max-width:70ch}
+.hdr-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.app{display:grid;grid-template-columns:340px minmax(0,1fr);gap:0;align-items:start}
+aside{position:sticky;top:0;max-height:100vh;overflow-y:auto;border-right:1px solid var(--line);background:var(--panel);padding:14px 16px 40px;display:flex;flex-direction:column;gap:16px}
+main{padding:16px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-width:0}
+.card-hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+fieldset{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:9px}
+legend{font-family:var(--display);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);margin-bottom:6px;padding:0}
+.ctl{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center}
+.ctl label{font-size:13px}
+.ctl output{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right;white-space:nowrap}
+.ctl input[type=range]{grid-column:1 / -1;width:100%;accent-color:var(--accent)}
+select,button,input[type=number]{font:inherit;font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+select{width:100%}
+button{cursor:pointer;background:var(--panel)}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+:root[data-theme="dark"] button.primary{color:#0b1312}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:5px 10px;background:transparent}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{font-size:12px;padding:4px 9px;border-radius:999px}
+.wintable{width:100%;border-collapse:collapse;font-size:12px}
+.wintable th{font-weight:600;color:var(--muted);text-align:left;padding:2px 4px}
+.wintable td{padding:2px 4px}
+.wintable input{width:62px;padding:3px 5px;font-family:var(--mono);font-size:12px}
+.wintable tr.party td{color:var(--muted)}
+.wintable input:disabled{opacity:.45}
+.note{font-size:12px;color:var(--muted);margin:0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;border-left:4px solid var(--line)}
+.kpi .lab{font-size:12px;color:var(--muted)}
+.kpi .val{font-family:var(--mono);font-size:20px;white-space:nowrap;font-weight:500;font-variant-numeric:tabular-nums}
+.kpi .sub{font-size:11px;color:var(--muted)}
+.kpi.ok{border-left-color:#3d9a5b}.kpi.warn{border-left-color:#d6a019}.kpi.bad{border-left-color:#c8431c}
+#mapwrap{position:relative;height:430px}
+#map{width:100%;height:100%;display:block}
+#map path{stroke:var(--panel);stroke-width:.6;cursor:pointer;vector-effect:non-scaling-stroke}
+#map path:hover{stroke:var(--ink);stroke-width:1.2}
+#map path.sel{stroke:var(--ink);stroke-width:2.2}
+#tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.15);display:none;white-space:nowrap}
+.legend{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
+.legend .bar{width:140px;height:10px;border-radius:3px}
+#twin{position:relative;height:430px;border-radius:6px;overflow:hidden;background:linear-gradient(#cfe0ea,#eef3f1)}
+:root[data-theme="dark"] #twin{background:linear-gradient(#1b2a35,#151c1c)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) #twin{background:linear-gradient(#1b2a35,#151c1c)}}
+#twin canvas{display:block}
+.overlay{position:absolute;left:10px;top:10px;background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-size:12px;line-height:1.5}
+.overlay b{font-family:var(--mono);font-weight:500}
+.timebar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.timebar input[type=range]{flex:1;min-width:200px;accent-color:var(--accent)}
+#clock{font-family:var(--mono);font-size:15px;min-width:150px}
+.chartbox{position:relative;height:300px}
+.cmp{width:100%;border-collapse:collapse;font-size:12px}
+.cmp th,.cmp td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}
+.cmp th:first-child,.cmp td:first-child{text-align:left}
+.cmp td.mono{font-family:var(--mono)}
+.swatch{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px}
+.methods{columns:2 340px;column-gap:28px;font-size:13px}
+.methods p{margin:0 0 10px;break-inside:avoid}
+.methods code{font-family:var(--mono);font-size:12px;background:var(--accent-soft);padding:0 3px;border-radius:3px}
+.err{color:var(--hot)}
+@media (max-width: 1100px){ .grid2{grid-template-columns:1fr} }
+@media (max-width: 820px){ .app{grid-template-columns:1fr} aside{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line)} }
+@media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Philadelphia Indoor Heat Twin</h1>
+    <p>Physics-based indoor temperature model for a two-story house: sun position, façade and roof irradiance, window gains, envelope conduction, thermal mass, ventilation and an attic or flat roof. Change any parameter and the twin re-simulates.</p>
+  </div>
+  <div class="hdr-tools">
+    <div class="seg" role="group" aria-label="Temperature units">
+      <button id="uC" aria-pressed="true">°C</button><button id="uF" aria-pressed="false">°F</button>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+<aside>
+  <fieldset>
+    <legend>Quick scenarios</legend>
+    <div class="chips" id="presets">
+      <button data-p="baseline">Reset to typology baseline</button>
+      <button data-p="coolroof">Cool roof (α 0.25)</button>
+      <button data-p="insulate">Roof insulation R-30</button>
+      <button data-p="blinds">Blinds + night vent</button>
+      <button data-p="rotate">Rotate 90°</button>
+      <button data-p="retrofit">Deep retrofit</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Site &amp; weather</legend>
+    <div class="ctl"><label for="site">Neighborhood</label><output id="siteLL" class="mono"></output>
+      <select id="site" style="grid-column:1/-1"></select></div>
+    <div class="ctl"><label for="month">Month (typical day)</label><output id="monthO"></output>
+      <input type="range" id="month" min="1" max="12" step="1" value="7"></div>
+    <div class="ctl"><label for="scen">Weather scenario</label><span></span>
+      <select id="scen" style="grid-column:1/-1">
+        <option value="typical">Typical day (1991–2020 normals)</option>
+        <option value="heatwave" selected>3-day heat wave (clear sky)</option>
+        <option value="coldsnap">3-day cold snap</option>
+      </select></div>
+    <div class="ctl"><label for="dT">Heat wave / cold snap intensity</label><output id="dTO"></output>
+      <input type="range" id="dT" min="1" max="10" step="0.5" value="5"></div>
+    <div class="ctl"><label for="sky">Sky</label><span></span>
+      <select id="sky" style="grid-column:1/-1">
+        <option value="avg">Monthly average cloudiness</option>
+        <option value="clear">Clear</option>
+        <option value="overcast">Overcast</option>
+      </select></div>
+    <div class="ctl"><label for="uhiN">Urban heat island, night</label><output id="uhiNO"></output>
+      <input type="range" id="uhiN" min="0" max="6" step="0.1" value="2"></div>
+    <div class="ctl"><label for="uhiD">Urban heat island, day</label><output id="uhiDO"></output>
+      <input type="range" id="uhiD" min="0" max="4" step="0.1" value="1"></div>
+    <p class="note">Picking a neighborhood loads its UHI offsets from the table (a distance-to-Center-City proxy until you import your own CSV below).</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Building</legend>
+    <div class="ctl"><label for="typ">Typology</label><span></span>
+      <select id="typ" style="grid-column:1/-1">
+        <option value="row">Rowhouse (2 party walls, flat roof)</option>
+        <option value="twin">Twin / semi-detached (1 party wall)</option>
+        <option value="det">Detached single-family</option>
+      </select></div>
+    <div class="ctl"><label for="era">Construction / envelope</label><span></span>
+      <select id="era" style="grid-column:1/-1">
+        <option value="pre1940">Pre-1940 solid brick, uninsulated</option>
+        <option value="mid">1950–1980, light insulation</option>
+        <option value="code">IECC 2021 code (zone 4A)</option>
+        <option value="ph">Deep retrofit / passive-house level</option>
+      </select></div>
+    <div class="ctl"><label for="orient">Front façade faces</label><output id="orientO"></output>
+      <input type="range" id="orient" min="0" max="355" step="5" value="180"></div>
+    <div class="ctl"><label for="W">Frontage width</label><output id="WO"></output>
+      <input type="range" id="W" min="4" max="14" step="0.5" value="5"></div>
+    <div class="ctl"><label for="D">Depth</label><output id="DO"></output>
+      <input type="range" id="D" min="6" max="16" step="0.5" value="12"></div>
+    <div class="ctl"><label for="hw">Street canyon H/W (front)</label><output id="hwO"></output>
+      <input type="range" id="hw" min="0" max="2" step="0.05" value="0.7"></div>
+    <div class="ctl"><label for="mass">Interior thermal mass</label><span></span>
+      <select id="mass" style="grid-column:1/-1">
+        <option value="80000">Light (frame, drywall)</option>
+        <option value="165000">Medium</option>
+        <option value="260000">Heavy (masonry, plaster)</option>
+      </select></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Roof</legend>
+    <div class="ctl"><label for="roofT">Roof type</label><span></span>
+      <select id="roofT" style="grid-column:1/-1">
+        <option value="flat">Flat (membrane on joists)</option>
+        <option value="pitched">Pitched 30° with ventilated attic</option>
+      </select></div>
+    <div class="ctl"><label for="Rroof">Roof / ceiling insulation</label><output id="RroofO"></output>
+      <input type="range" id="Rroof" min="0.1" max="11" step="0.1" value="0.4"></div>
+    <div class="ctl"><label for="aroof">Roof solar absorptance</label><output id="aroofO"></output>
+      <input type="range" id="aroof" min="0.1" max="0.95" step="0.05" value="0.9"></div>
+    <div class="ctl" id="attRow"><label for="achAt">Attic ventilation</label><output id="achAtO"></output>
+      <input type="range" id="achAt" min="0.5" max="15" step="0.5" value="3"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Walls &amp; windows</legend>
+    <div class="ctl"><label for="Uw">Wall U-value</label><output id="UwO"></output>
+      <input type="range" id="Uw" min="0.1" max="2.5" step="0.05" value="1.9"></div>
+    <div class="ctl"><label for="Ug">Window U-value</label><output id="UgO"></output>
+      <input type="range" id="Ug" min="0.6" max="5.8" step="0.1" value="4.8"></div>
+    <div class="ctl"><label for="shgc">Window SHGC</label><output id="shgcO"></output>
+      <input type="range" id="shgc" min="0.15" max="0.85" step="0.01" value="0.75"></div>
+    <div class="ctl"><label for="blinds">Interior blinds closed</label><output id="blindsO"></output>
+      <input type="range" id="blinds" min="0" max="1" step="0.05" value="0"></div>
+    <div>
+      <h3 style="margin-bottom:4px">Window area per façade (m²)</h3>
+      <table class="wintable" id="wint">
+        <thead><tr><th>Façade</th><th>Faces</th><th>Floor 1</th><th>Floor 2</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="note">Party walls take no windows. Left/right are as seen from the street.</p>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Operation</legend>
+    <div class="ctl"><label for="ach">Infiltration</label><output id="achO"></output>
+      <input type="range" id="ach" min="0.05" max="2" step="0.05" value="0.9"></div>
+    <div class="ctl"><label for="vent">Window opening</label><span></span>
+      <select id="vent" style="grid-column:1/-1">
+        <option value="closed">Closed</option>
+        <option value="night">Night ventilation (21:00–07:00)</option>
+        <option value="cooler" selected>Open whenever outside is cooler</option>
+      </select></div>
+    <div class="ctl"><label for="achV">Ventilation rate when open</label><output id="achVO"></output>
+      <input type="range" id="achV" min="1" max="15" step="0.5" value="4"></div>
+    <div class="ctl"><label for="qint">Internal gains (evening peak)</label><output id="qintO"></output>
+      <input type="range" id="qint" min="0" max="15" step="0.5" value="6"></div>
+    <div class="ctl"><label for="hvac">HVAC</label><span></span>
+      <select id="hvac" style="grid-column:1/-1">
+        <option value="off" selected>None (free-running)</option>
+        <option value="cool">Cooling only</option>
+        <option value="both">Heating + cooling</option>
+      </select></div>
+    <div class="ctl"><label for="Tc">Cooling setpoint</label><output id="TcO"></output>
+      <input type="range" id="Tc" min="22" max="30" step="0.5" value="26"></div>
+    <div class="ctl"><label for="Th">Heating setpoint</label><output id="ThO"></output>
+      <input type="range" id="Th" min="15" max="22" step="0.5" value="20"></div>
+    <div class="ctl"><label for="cap">AC capacity (whole house)</label><output id="capO"></output>
+      <input type="range" id="cap" min="0.5" max="10" step="0.5" value="3.5"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Your UHI data</legend>
+    <p class="note">CSV with columns <span class="mono">name,uhi_day,uhi_night</span> (°C, names as in the dropdown). Replaces the proxy for matched neighborhoods, e.g. offsets derived from your Landsat LST or MRT rasters.</p>
+    <input type="file" id="csv" accept=".csv,text/csv">
+    <p class="note" id="csvMsg"></p>
+  </fieldset>
+</aside>
+
+<main>
+  <div class="grid2">
+    <section class="card">
+      <div class="card-hd">
+        <h2>Citywide scenario map</h2>
+        <select id="metric" style="width:auto">
+          <option value="peak2">Peak upstairs temperature</option>
+          <option value="h26">Hours upstairs ≥ 26 °C (3 days)</option>
+          <option value="h30">Hours upstairs ≥ 30 °C (3 days)</option>
+          <option value="cool">Cooling energy (kWh/day)</option>
+        </select>
+      </div>
+      <div id="mapwrap"><svg id="map" role="img" aria-label="Map of Philadelphia neighborhoods colored by simulated indoor heat"></svg><div id="tip"></div></div>
+      <div class="card-hd" style="margin:8px 0 0">
+        <div class="legend"><span id="lgMin" class="mono"></span><span class="bar" id="lgBar"></span><span id="lgMax" class="mono"></span></div>
+        <span class="note">Same house in all 159 neighborhoods; only the UHI offset changes. Click to set the site.</span>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-hd">
+        <h2>3D digital twin</h2>
+        <select id="view3d" style="width:auto">
+          <option value="indoor">Indoor air temperature (x-ray)</option>
+          <option value="surface">Exterior surface temperature</option>
+          <option value="real">Materials</option>
+        </select>
+      </div>
+      <div id="twin"><div class="overlay" id="ov"></div></div>
+      <p class="note" style="margin-top:8px">Drag to orbit, scroll to zoom. Window glow = transmitted solar gain. North arrow on the ground; the sun moves with the time slider.</p>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="timebar">
+      <button id="play" class="primary" aria-label="Play time">▶ Play</button>
+      <span id="clock">Day 1 00:00</span>
+      <input type="range" id="time" min="0" max="71.83" step="0.1667" value="38" aria-label="Simulation time">
+      <span class="note" id="sunTxt"></span>
+    </div>
+  </section>
+
+  <section class="kpis" id="kpis"></section>
+
+  <div class="grid2">
+    <section class="card">
+      <div class="card-hd"><h2>Temperatures over the 3 displayed days</h2>
+        <div class="chips"><button id="pin">Pin this scenario</button><button id="clearPins">Clear pins</button></div></div>
+      <div class="chartbox"><canvas id="cT"></canvas></div>
+    </section>
+    <section class="card">
+      <div class="card-hd"><h2>Heat balance, last day (kWh)</h2>
+        <select id="balScope" style="width:auto">
+          <option value="house">Whole house</option>
+          <option value="f2">Floor 2 (upstairs)</option>
+          <option value="f1">Floor 1</option>
+        </select></div>
+      <div class="chartbox"><canvas id="cB"></canvas></div>
+    </section>
+  </div>
+
+  <div class="grid2">
+    <section class="card">
+      <div class="card-hd"><h2>Solar irradiance on the envelope (W/m²)</h2></div>
+      <div class="chartbox"><canvas id="cS"></canvas></div>
+    </section>
+    <section class="card">
+      <div class="card-hd"><h2>Scenario comparison</h2></div>
+      <div style="overflow-x:auto"><table class="cmp" id="cmp"></table></div>
+      <p class="note" style="margin-top:8px">Pin scenarios to compare them here and as dashed lines in the temperature chart.</p>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2 style="margin-bottom:10px">How the model works</h2>
+    <div class="methods">
+      <p><b>Thermal network.</b> Each floor has an air node (air plus furniture) and an interior mass node (floors, partitions, party walls), linked by <code>h·A<sub>m</sub></code> with A<sub>m</sub> = 3·floor area (ISO 13790 style). Exterior walls are a third node per floor, split into two equal resistances between sol-air temperature and indoor air. Floors couple through the floor/ceiling and the stair. Integrated explicitly at 60 s for 10 days; the first 7 are spin-up, the last 3 are shown.</p>
+      <p><b>Roof.</b> Flat: a roof-deck node exchanges with the sol-air temperature outside and with the upstairs through the insulation. Pitched: deck node → attic air node (ventilated to outdoors) → ceiling insulation → upstairs.</p>
+      <p><b>Sun and sky.</b> NOAA/Spencer solar position for the neighborhood's latitude and longitude (EST/EDT clock). Clear-sky GHI from Haurwitz, scaled so the daily total matches Philadelphia's monthly mean, then split into beam and diffuse with the Erbs correlation. Each façade and roof plane gets beam·cosθ + isotropic sky diffuse + ground reflection (albedo 0.2).</p>
+      <p><b>Street canyon.</b> For the front façade, the opposite row (same height) casts a shadow line at H<sub>b</sub> − W<sub>street</sub>·tan(profile angle); window sunlit fraction and sky view factor (1 − sin ε)/2 follow from it.</p>
+      <p><b>Windows.</b> Transmitted solar = glazed area (85%) × SHGC × incidence-angle modifier × blind factor; 30% goes to air, 70% to the mass. Conduction U·A to outdoor air. Internal gains follow a residential schedule.</p>
+      <p><b>Opaque surfaces.</b> Sol-air temperature T<sub>o</sub> + α·I/h<sub>o</sub> − εΔR/h<sub>o</sub> (h<sub>o</sub> = 17 W/m²K, ΔR = 63 W/m² for a horizontal surface, scaled by cloudiness). Basement/ground follows an annual sinusoid around 13.5 °C.</p>
+      <p><b>Weather.</b> Hourly air temperature from 1991–2020 PHL monthly mean max/min with the ASHRAE diurnal profile, plus the neighborhood's UHI offset (day value at noon, night value after dark). Heat waves add the chosen ΔT on three clear days.</p>
+      <p><b>Limits.</b> Single typical day per month, no wind-driven or stack-driven flow model, no detailed longwave exchange between rooms. The neighborhood UHI values are an illustrative proxy, not measurements; import measured offsets for real analysis.</p>
+    </div>
+  </section>
+</main>
+</div>
+
+<script>const NB = {"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.05408,40.00349],[-75.06171,40.00669],[-75.06765,40.0052],[-75.06887,40.00855],[-75.0726,40.00812],[-75.07955,40.00253],[-75.08638,39.99894],[-75.08633,39.99888],[-75.08372,39.99676],[-75.08369,39.99674],[-75.08367,39.99672],[-75.08363,39.99669],[-75.08361,39.99667],[-75.08353,39.99661],[-75.0835,39.99658],[-75.08346,39.99654],[-75.08345,39.99654],[-75.08344,39.99653],[-75.08339,39.99649],[-75.08337,39.99648],[-75.08336,39.99646],[-75.08334,39.99645],[-75.08331,39.99642],[-75.0833,39.99641],[-75.08324,39.99636],[-75.08323,39.99635],[-75.08318,39.99631],[-75.08316,39.99629],[-75.08313,39.99626],[-75.08312,39.99625],[-75.08303,39.99616],[-75.08302,39.99616],[-75.083,39.99613],[-75.08299,39.99612],[-75.08298,39.99611],[-75.08297,39.9961],[-75.08295,39.99608],[-75.08292,39.99605],[-75.08291,39.99603],[-75.07888,39.99154],[-75.07179,39.98592],[-75.07045,39.98543],[-75.06958,39.98632],[-75.06545,39.98491],[-75.05995,39.99145],[-75.05809,39.99741],[-75.05408,40.00349]]]},"properties":{"LISTNAME":"Bridesburg"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.0156,40.09487],[-75.02184,40.1001],[-75.02762,40.10184],[-75.03559,40.10675],[-75.03884,40.10711],[-75.0486,40.11269],[-75.05834,40.10589],[-75.06939,40.09448],[-75.06446,40.09088],[-75.05829,40.09018],[-75.05493,40.08098],[-75.05257,40.07958],[-75.04744,40.08291],[-75.0399,40.07267],[-75.04164,40.06971],[-75.04033,40.06876],[-75.03958,40.06985],[-75.02898,40.081],[-75.0156,40.09487]]]},"properties":{"LISTNAME":"Bustleton"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.18846,40.07275],[-75.17536,40.06528],[-75.1713,40.06928],[-75.16959,40.07097],[-75.16672,40.07384],[-75.1656,40.07494],[-75.16359,40.077],[-75.17644,40.08465],[-75.18846,40.07275]]]},"properties":{"LISTNAME":"Cedarbrook"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.18926,40.07321],[-75.22361,40.09291],[-75.23049,40.08604],[-75.22454,40.08154],[-75.22345,40.07926],[-75.2153,40.07337],[-75.22128,40.07287],[-75.22249,40.07125],[-75.21831,40.06672],[-75.22136,40.06414],[-75.21795,40.05831],[-75.21563,40.05705],[-75.21751,40.05532],[-75.21686,40.05256],[-75.21371,40.04925],[-75.21063,40.04798],[-75.20919,40.05235],[-75.20534,40.05321],[-75.20124,40.05773],[-75.2025,40.06258],[-75.19839,40.06469],[-75.19645,40.06661],[-75.18926,40.07321]]]},"properties":{"LISTNAME":"Chestnut Hill"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.18476,40.02829],[-75.1862,40.02948],[-75.18778,40.03078],[-75.18829,40.02958],[-75.18872,40.02947],[-75.1889,40.02935],[-75.18941,40.02929],[-75.18971,40.02923],[-75.18995,40.02914],[-75.19261,40.02732],[-75.19316,40.0241],[-75.19878,40.02023],[-75.20229,40.01582],[-75.2059,40.01534],[-75.20774,40.01282],[-75.2066,40.01167],[-75.20335,40.01012],[-75.19272,40.00647],[-75.19225,40.00729],[-75.18942,40.00909],[-75.18509,40.01059],[-75.17832,40.0145],[-75.17585,40.01612],[-75.17256,40.01778],[-75.17691,40.02148],[-75.18354,40.02731],[-75.18476,40.02829]]]},"properties":{"LISTNAME":"East Falls"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.18095,40.04317],[-75.17223,40.05175],[-75.16473,40.0591],[-75.16789,40.06098],[-75.17085,40.06267],[-75.17406,40.06453],[-75.17536,40.06528],[-75.18846,40.07275],[-75.18926,40.07321],[-75.19645,40.06661],[-75.1885,40.05739],[-75.18231,40.04592],[-75.18095,40.04317]]]},"properties":{"LISTNAME":"Mount Airy, East"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.20647,39.93331],[-75.19672,39.92849],[-75.19429,39.92589],[-75.19536,39.92083],[-75.18893,39.92191],[-75.18695,39.92229],[-75.18683,39.92277],[-75.18523,39.93016],[-75.18702,39.93039],[-75.18494,39.9401],[-75.18805,39.9401],[-75.19277,39.94263],[-75.19377,39.9422],[-75.20035,39.94372],[-75.20394,39.94291],[-75.20525,39.94132],[-75.20452,39.93622],[-75.20647,39.93331]]]},"properties":{"LISTNAME":"Grays Ferry"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.12208,40.04486],[-75.12564,40.04528],[-75.13042,40.046],[-75.13486,40.04619],[-75.13474,40.04603],[-75.13478,40.03889],[-75.13586,40.0372],[-75.13647,40.03724],[-75.14001,40.03426],[-75.1374,40.03269],[-75.13996,40.02094],[-75.13326,40.02385],[-75.12349,40.02566],[-75.11276,40.02739],[-75.11172,40.02803],[-75.11116,40.03051],[-75.11116,40.03434],[-75.11433,40.03894],[-75.11223,40.04357],[-75.11229,40.04351],[-75.11243,40.04354],[-75.11275,40.04365],[-75.12208,40.04486]]]},"properties":{"LISTNAME":"Olney"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.04033,40.06876],[-75.04164,40.06971],[-75.0399,40.07267],[-75.04744,40.08291],[-75.05257,40.07958],[-75.05493,40.08098],[-75.05829,40.09018],[-75.06446,40.09088],[-75.06939,40.09448],[-75.07619,40.08743],[-75.07162,40.08664],[-75.06802,40.08506],[-75.06233,40.08452],[-75.06848,40.0802],[-75.0662,40.07783],[-75.06902,40.07207],[-75.0655,40.07024],[-75.05841,40.07475],[-75.05632,40.07302],[-75.04975,40.07657],[-75.04742,40.07654],[-75.04434,40.07309],[-75.0451,40.07013],[-75.04822,40.06692],[-75.04497,40.06508],[-75.0417,40.06483],[-75.03861,40.062],[-75.03871,40.05643],[-75.04214,40.05008],[-75.04753,40.04802],[-75.05119,40.0493],[-75.05164,40.04716],[-75.04778,40.04622],[-75.04042,40.04752],[-75.03983,40.04633],[-75.03441,40.04453],[-75.03152,40.04572],[-75.03149,40.04773],[-75.02411,40.04918],[-75.02043,40.04783],[-75.0183,40.04427],[-75.01872,40.04701],[-75.01699,40.05078],[-75.01903,40.05304],[-75.02318,40.05524],[-75.02342,40.05541],[-75.02353,40.05551],[-75.02496,40.05333],[-75.0254,40.05061],[-75.0313,40.05143],[-75.03223,40.05259],[-75.03587,40.05148],[-75.03623,40.05467],[-75.03418,40.05732],[-75.0334,40.06124],[-75.0352,40.06574],[-75.04033,40.06876]]]},"properties":{"LISTNAME":"Pennypack Park"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-74.98751,40.12365],[-74.98871,40.12569],[-74.99397,40.12705],[-74.99232,40.13088],[-74.99359,40.13227],[-74.99788,40.12782],[-75.01506,40.13799],[-75.02057,40.13227],[-75.0486,40.11269],[-75.03884,40.10711],[-75.03559,40.10675],[-75.02762,40.10184],[-75.02184,40.1001],[-75.0156,40.09487],[-75.01274,40.09741],[-75.00181,40.10495],[-74.99713,40.10815],[-74.99573,40.10978],[-74.99889,40.11172],[-75.00324,40.11661],[-74.9971,40.12117],[-74.99356,40.11866],[-74.98751,40.12365]]]},"properties":{"LISTNAME":"Somerton"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.18231,40.04592],[-75.1885,40.05739],[-75.19645,40.06661],[-75.19839,40.06469],[-75.2025,40.06258],[-75.20124,40.05773],[-75.20534,40.05321],[-75.20919,40.05235],[-75.21063,40.04798],[-75.21008,40.04462],[-75.20596,40.04048],[-75.20285,40.03953],[-75.19995,40.03715],[-75.19712,40.03339],[-75.19567,40.03392],[-75.19325,40.03482],[-75.19099,40.03736],[-75.18231,40.04592]]]},"properties":{"LISTNAME":"Mount Airy, West"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.14231,40.05064],[-75.1417,40.05321],[-75.1413,40.05523],[-75.13981,40.062],[-75.13953,40.06339],[-75.13952,40.06342],[-75.16359,40.077],[-75.1656,40.07494],[-75.16672,40.07384],[-75.16959,40.07097],[-75.1713,40.06928],[-75.17536,40.06528],[-75.17406,40.06453],[-75.17085,40.06267],[-75.16789,40.06098],[-75.15786,40.0552],[-75.15023,40.05167],[-75.14655,40.04956],[-75.14297,40.04758],[-75.14292,40.04757],[-75.14251,40.04946],[-75.14231,40.05064]]]},"properties":{"LISTNAME":"West Oak Lane"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.21063,40.04798],[-75.21371,40.04925],[-75.21686,40.05256],[-75.21751,40.05532],[-75.21563,40.05705],[-75.21795,40.05831],[-75.22136,40.06414],[-75.21831,40.06672],[-75.22249,40.07125],[-75.22128,40.07287],[-75.2153,40.07337],[-75.22345,40.07926],[-75.22454,40.08154],[-75.23049,40.08604],[-75.23307,40.08358],[-75.22782,40.08146],[-75.22593,40.079],[-75.23061,40.07689],[-75.2284,40.07328],[-75.22871,40.07036],[-75.22468,40.06688],[-75.22593,40.06211],[-75.22337,40.05919],[-75.22537,40.05816],[-75.22829,40.06048],[-75.22987,40.05972],[-75.22778,40.05712],[-75.22865,40.05502],[-75.22716,40.05254],[-75.21815,40.04822],[-75.21761,40.04342],[-75.21411,40.04013],[-75.2104,40.03751],[-75.20844,40.03399],[-75.20761,40.03162],[-75.20406,40.03049],[-75.20341,40.0296],[-75.20557,40.02867],[-75.20358,40.02608],[-75.20316,40.0259],[-75.20316,40.02589],[-75.20452,40.02089],[-75.2034,40.01818],[-75.20716,40.01659],[-75.20824,40.01316],[-75.20774,40.01282],[-75.2059,40.01534],[-75.20229,40.01582],[-75.19878,40.02023],[-75.19316,40.0241],[-75.19261,40.02732],[-75.19276,40.02752],[-75.19291,40.02755],[-75.19613,40.02752],[-75.19621,40.02751],[-75.19629,40.02749],[-75.1964,40.02746],[-75.19679,40.02743],[-75.19694,40.02744],[-75.19807,40.03091],[-75.19966,40.03233],[-75.19925,40.03274],[-75.19712,40.03339],[-75.19995,40.03715],[-75.20285,40.03953],[-75.20596,40.04048],[-75.21008,40.04462],[-75.21063,40.04798]]]},"properties":{"LISTNAME":"Wissahickon Park"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.1511,39.89552],[-75.1413,39.89423],[-75.13554,39.89282],[-75.13136,39.89914],[-75.13005,39.90239],[-75.12854,39.9091],[-75.12825,39.91317],[-75.13448,39.92617],[-75.13615,39.93298],[-75.13627,39.94328],[-75.13524,39.95068],[-75.1337,39.95462],[-75.13139,39.95774],[-75.13894,39.96044],[-75.1392,39.9593],[-75.13993,39.9569],[-75.14038,39.95553],[-75.14263,39.94748],[-75.14309,39.94532],[-75.14337,39.9442],[-75.14393,39.94153],[-75.14406,39.94097],[-75.14439,39.93955],[-75.14459,39.93861],[-75.14466,39.93832],[-75.14376,39.93826],[-75.14572,39.93344],[-75.14654,39.93005],[-75.14822,39.92034],[-75.14774,39.91678],[-75.14783,39.91372],[-75.14885,39.90862],[-75.1511,39.89552]]]},"properties":{"LISTNAME":"Riverfront"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-74.96356,40.11694],[-74.96499,40.11864],[-74.97012,40.1172],[-74.97322,40.11989],[-74.97881,40.1196],[-74.98195,40.12025],[-74.98296,40.12335],[-74.98751,40.12365],[-74.99356,40.11866],[-74.9971,40.12117],[-75.00324,40.11661],[-74.99889,40.11172],[-74.99573,40.10978],[-74.99713,40.10815],[-74.99441,40.10618],[-74.98665,40.0993],[-74.98198,40.10248],[-74.98182,40.10409],[-74.96992,40.11338],[-74.96954,40.11592],[-74.9665,40.11767],[-74.96356,40.11694]]]},"properties":{"LISTNAME":"Byberry"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-74.99852,40.06421],[-74.99464,40.06937],[-75.00225,40.07402],[-75.00292,40.07217],[-75.00719,40.06923],[-74.99852,40.06421]]]},"properties":{"LISTNAME":"West Torresdale"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-74.96373,40.10944],[-74.96554,40.11006],[-74.96876,40.1087],[-74.96803,40.10558],[-74.96344,40.10634],[-74.96536,40.10802],[-74.96373,40.10944]]]},"properties":{"LISTNAME":"Mechanicsville"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-74.96373,40.10944],[-74.96356,40.11694],[-74.9665,40.11767],[-74.96954,40.11592],[-74.96992,40.11338],[-74.98182,40.10409],[-74.98198,40.10248],[-74.98665,40.0993],[-74.9913,40.09576],[-74.98416,40.08999],[-74.97992,40.0938],[-74.97153,40.08724],[-74.97152,40.08724],[-74.96439,40.09224],[-74.96209,40.09337],[-74.95866,40.09689],[-74.96134,40.0975],[-74.96186,40.09969],[-74.96088,40.1031],[-74.96344,40.10634],[-74.96803,40.10558],[-74.96876,40.1087],[-74.96554,40.11006],[-74.96373,40.10944]]]},"properties":{"LISTNAME":"Parkwood Manor"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-74.96483,40.07727],[-74.96246,40.07808],[-74.95884,40.0825],[-74.95768,40.08775],[-74.95806,40.09042],[-74.9563,40.09342],[-74.95616,40.09575],[-74.95866,40.09689],[-74.96209,40.09337],[-74.96439,40.09224],[-74.97152,40.08724],[-74.96608,40.08102],[-74.96483,40.07727]]]},"properties":{"LISTNAME":"Franklin Mills"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-74.9913,40.09576],[-75.00181,40.10495],[-75.01274,40.09741],[-75.0156,40.09487],[-75.02898,40.081],[-75.01309,40.07212],[-75.00723,40.06925],[-75.00719,40.06923],[-75.00292,40.07217],[-75.00225,40.07402],[-74.99728,40.08012],[-74.99438,40.08172],[-74.98864,40.08485],[-74.98416,40.08999],[-74.9913,40.09576]]]},"properties":{"LISTNAME":"Northeast Phila Airport"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-74.97153,40.08724],[-74.97992,40.0938],[-74.98416,40.08999],[-74.98864,40.08485],[-74.99438,40.08172],[-74.98677,40.07524],[-74.9811,40.07189],[-74.97958,40.07506],[-74.97759,40.07982],[-74.97153,40.08724]]]},"properties":{"LISTNAME":"Modena"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-74.9811,40.07189],[-74.98677,40.07524],[-74.99438,40.08172],[-74.99728,40.08012],[-75.00225,40.07402],[-74.99464,40.06937],[-74.99852,40.06421],[-74.99042,40.06041],[-74.98561,40.06332],[-74.98236,40.06459],[-74.9811,40.07189]]]},"properties":{"LISTNAME":"Morrell Park"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-74.96483,40.07727],[-74.96608,40.08102],[-74.97152,40.08724],[-74.97153,40.08724],[-74.97759,40.07982],[-74.97958,40.07506],[-74.975,40.0701],[-74.97115,40.07399],[-74.96956,40.07676],[-74.96483,40.07727]]]},"properties":{"LISTNAME":"Millbrook"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-74.98236,40.06459],[-74.9807,40.06492],[-74.98029,40.06615],[-74.975,40.0701],[-74.97958,40.07506],[-74.9811,40.07189],[-74.98236,40.06459]]]},"properties":{"LISTNAME":"Crestmont Farms"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.00719,40.06923],[-75.00723,40.06925],[-75.00945,40.06586],[-75.00947,40.06081],[-75.00848,40.05706],[-75.00858,40.05357],[-75.00828,40.05219],[-75.00112,40.05723],[-74.99042,40.06041],[-74.99852,40.06421],[-75.00719,40.06923]]]},"properties":{"LISTNAME":"Academy Gardens"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.01309,40.07212],[-75.02898,40.081],[-75.03958,40.06985],[-75.04033,40.06876],[-75.0352,40.06574],[-75.0334,40.06124],[-75.03418,40.05732],[-75.02838,40.05661],[-75.0269,40.05824],[-75.02214,40.06319],[-75.01309,40.07212]]]},"properties":{"LISTNAME":"Pennypack"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.02214,40.06319],[-75.02112,40.06156],[-75.01325,40.05667],[-75.01284,40.05639],[-75.00858,40.05357],[-75.00848,40.05706],[-75.00947,40.06081],[-75.00945,40.06586],[-75.00723,40.06925],[-75.01309,40.07212],[-75.02214,40.06319]]]},"properties":{"LISTNAME":"Aston-Woodbridge"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.01284,40.05639],[-75.01325,40.05667],[-75.02279,40.06227],[-75.0269,40.05824],[-75.02838,40.05661],[-75.0244,40.05659],[-75.02379,40.05571],[-75.02353,40.05551],[-75.02342,40.05541],[-75.02318,40.05524],[-75.01903,40.05304],[-75.01699,40.05078],[-75.01872,40.04701],[-75.0183,40.04427],[-75.01411,40.04747],[-75.0083,40.05219],[-75.00858,40.05357],[-75.01284,40.05639]]]},"properties":{"LISTNAME":"Pennypack Woods"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.03418,40.05732],[-75.03623,40.05467],[-75.03587,40.05148],[-75.03223,40.05259],[-75.0313,40.05143],[-75.0254,40.05061],[-75.02496,40.05333],[-75.02353,40.05551],[-75.02379,40.05571],[-75.0244,40.05659],[-75.02838,40.05661],[-75.03418,40.05732]]]},"properties":{"LISTNAME":"Winchester Park"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-74.99538,40.03251],[-74.97784,40.04537],[-74.97398,40.0486],[-74.98003,40.05364],[-74.98349,40.05445],[-74.98489,40.05729],[-74.98038,40.06035],[-74.9807,40.06492],[-74.98236,40.06459],[-74.98561,40.06332],[-74.99042,40.06041],[-75.00112,40.05723],[-75.00828,40.05219],[-75.01411,40.04747],[-75.00484,40.04013],[-74.99894,40.03502],[-74.99538,40.03251]]]},"properties":{"LISTNAME":"Torresdale"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.05119,40.0493],[-75.04753,40.04802],[-75.04214,40.05008],[-75.03871,40.05643],[-75.03861,40.062],[-75.0417,40.06483],[-75.04464,40.05874],[-75.05045,40.05283],[-75.05119,40.0493]]]},"properties":{"LISTNAME":"Lexington Park"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.0417,40.06483],[-75.04497,40.06508],[-75.04822,40.06692],[-75.0451,40.07013],[-75.04434,40.07309],[-75.04742,40.07654],[-75.04975,40.07657],[-75.05632,40.07302],[-75.05841,40.07475],[-75.0655,40.07024],[-75.06902,40.07207],[-75.07042,40.07028],[-75.063,40.06615],[-75.0733,40.05534],[-75.05441,40.04451],[-75.05164,40.04716],[-75.05119,40.0493],[-75.05045,40.05283],[-75.04464,40.05874],[-75.0417,40.06483]]]},"properties":{"LISTNAME":"Rhawnhurst"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.06902,40.07207],[-75.0662,40.07783],[-75.06848,40.0802],[-75.06233,40.08452],[-75.06802,40.08506],[-75.07162,40.08664],[-75.07619,40.08743],[-75.08119,40.08412],[-75.09373,40.07189],[-75.08402,40.06669],[-75.08352,40.06132],[-75.0733,40.05534],[-75.063,40.06615],[-75.07042,40.07028],[-75.06902,40.07207]]]},"properties":{"LISTNAME":"Fox Chase"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.08641,40.05387],[-75.08578,40.05755],[-75.08352,40.06132],[-75.08402,40.06669],[-75.09373,40.07189],[-75.09673,40.06899],[-75.08742,40.0636],[-75.09349,40.05725],[-75.09142,40.05674],[-75.08641,40.05387]]]},"properties":{"LISTNAME":"Burholme"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.0733,40.05534],[-75.08352,40.06132],[-75.08578,40.05755],[-75.08641,40.05387],[-75.08606,40.05088],[-75.0889,40.04438],[-75.08819,40.04077],[-75.0887,40.03793],[-75.08468,40.03175],[-75.0636,40.03664],[-75.06181,40.03749],[-75.05441,40.04451],[-75.0733,40.05534]]]},"properties":{"LISTNAME":"Oxford Circle"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.08468,40.03175],[-75.0887,40.03793],[-75.09889,40.02764],[-75.09549,40.02627],[-75.08797,40.03001],[-75.08468,40.03175]]]},"properties":{"LISTNAME":"Summerdale"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.0889,40.04438],[-75.09307,40.04628],[-75.09668,40.04254],[-75.10467,40.03535],[-75.10115,40.03335],[-75.10424,40.02974],[-75.10168,40.02943],[-75.09889,40.02764],[-75.0887,40.03793],[-75.08819,40.04077],[-75.0889,40.04438]]]},"properties":{"LISTNAME":"Crescentville"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.08641,40.05387],[-75.09142,40.05674],[-75.09349,40.05725],[-75.10627,40.04955],[-75.10943,40.04588],[-75.1111,40.04684],[-75.11208,40.04369],[-75.11433,40.03894],[-75.11116,40.03434],[-75.11116,40.03051],[-75.11172,40.02803],[-75.11276,40.02739],[-75.11277,40.02727],[-75.10424,40.02974],[-75.10115,40.03335],[-75.10467,40.03535],[-75.09668,40.04254],[-75.09307,40.04628],[-75.0889,40.04438],[-75.08606,40.05088],[-75.08641,40.05387]]]},"properties":{"LISTNAME":"Lawndale"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.08136,40.02632],[-75.08797,40.03001],[-75.09549,40.02627],[-75.09889,40.02764],[-75.10168,40.02943],[-75.10424,40.02974],[-75.11277,40.02727],[-75.1112,40.02321],[-75.10925,40.02211],[-75.10488,40.02363],[-75.10317,40.02119],[-75.10757,40.01732],[-75.10673,40.01643],[-75.09878,40.01634],[-75.0944,40.01478],[-75.09228,40.0153],[-75.08136,40.02632]]]},"properties":{"LISTNAME":"Northwood"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.0183,40.04427],[-75.02043,40.04783],[-75.02411,40.04918],[-75.03149,40.04773],[-75.03152,40.04572],[-75.03441,40.04453],[-75.03649,40.04347],[-75.03343,40.03951],[-75.04064,40.03695],[-75.02535,40.01755],[-75.01964,40.01844],[-75.01324,40.0203],[-75.00385,40.027],[-75.00062,40.0287],[-74.99538,40.03251],[-74.99894,40.03502],[-75.00484,40.04013],[-75.01411,40.04747],[-75.0183,40.04427]]]},"properties":{"LISTNAME":"Holmesburg"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.06887,40.00855],[-75.07264,40.01894],[-75.07684,40.02326],[-75.08136,40.02632],[-75.09228,40.0153],[-75.0944,40.01478],[-75.09346,40.01277],[-75.09505,40.00964],[-75.0921,40.00717],[-75.09276,40.00568],[-75.09023,40.00421],[-75.08841,40.0033],[-75.08638,39.99894],[-75.07955,40.00253],[-75.0726,40.00812],[-75.06887,40.00855]]]},"properties":{"LISTNAME":"Frankford"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.03441,40.04453],[-75.03983,40.04633],[-75.04042,40.04752],[-75.04778,40.04622],[-75.05164,40.04716],[-75.05441,40.04451],[-75.06181,40.03749],[-75.0636,40.03664],[-75.08468,40.03175],[-75.08797,40.03001],[-75.08136,40.02632],[-75.07684,40.02326],[-75.07334,40.02542],[-75.0579,40.02854],[-75.05399,40.03129],[-75.04852,40.03296],[-75.04064,40.03695],[-75.03343,40.03951],[-75.03649,40.04347],[-75.03441,40.04453]]]},"properties":{"LISTNAME":"Mayfair"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.02535,40.01755],[-75.04064,40.03695],[-75.04852,40.03296],[-75.05399,40.03129],[-75.0579,40.02854],[-75.04853,40.01793],[-75.05613,40.01404],[-75.05,40.00714],[-75.04709,40.00994],[-75.04127,40.01271],[-75.03421,40.01522],[-75.02535,40.01755]]]},"properties":{"LISTNAME":"Tacony"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.05,40.00714],[-75.05613,40.01404],[-75.04853,40.01793],[-75.0579,40.02854],[-75.07334,40.02542],[-75.07684,40.02326],[-75.07264,40.01894],[-75.06887,40.00855],[-75.06765,40.0052],[-75.06171,40.00669],[-75.05408,40.00349],[-75.05,40.00714]]]},"properties":{"LISTNAME":"Wissinoming"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.22593,40.06211],[-75.22468,40.06688],[-75.22871,40.07036],[-75.2284,40.07328],[-75.23061,40.07689],[-75.22593,40.079],[-75.22782,40.08146],[-75.23307,40.08358],[-75.24323,40.07355],[-75.24105,40.07039],[-75.23967,40.064],[-75.2362,40.0611],[-75.23173,40.06408],[-75.22593,40.06211]]]},"properties":{"LISTNAME":"Andorra"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.22593,40.06211],[-75.23173,40.06408],[-75.2362,40.0611],[-75.23967,40.064],[-75.24105,40.07039],[-75.24323,40.07355],[-75.26443,40.0541],[-75.25765,40.04761],[-75.25154,40.0437],[-75.24558,40.04937],[-75.23727,40.05255],[-75.23482,40.04758],[-75.23204,40.04532],[-75.22627,40.04239],[-75.2234,40.03891],[-75.21972,40.04291],[-75.21761,40.04342],[-75.21815,40.04822],[-75.22716,40.05254],[-75.22865,40.05502],[-75.22778,40.05712],[-75.22987,40.05972],[-75.22829,40.06048],[-75.22537,40.05816],[-75.22337,40.05919],[-75.22593,40.06211]]]},"properties":{"LISTNAME":"Upper Roxborough"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.24221,40.03571],[-75.23757,40.04266],[-75.23204,40.04532],[-75.23482,40.04758],[-75.23727,40.05255],[-75.24558,40.04937],[-75.25154,40.0437],[-75.24904,40.04185],[-75.24617,40.03829],[-75.24221,40.03571]]]},"properties":{"LISTNAME":"Dearnley Park"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.23902,40.03272],[-75.23487,40.03491],[-75.22627,40.04239],[-75.23204,40.04532],[-75.23757,40.04266],[-75.24221,40.03571],[-75.23902,40.03272]]]},"properties":{"LISTNAME":"Roxborough Park"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.22876,40.03438],[-75.22673,40.03577],[-75.22603,40.03646],[-75.22281,40.03812],[-75.2234,40.03891],[-75.22627,40.04239],[-75.23487,40.03491],[-75.23902,40.03272],[-75.23528,40.03036],[-75.22876,40.03438]]]},"properties":{"LISTNAME":"Germany Hill"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.2234,40.03891],[-75.22281,40.03812],[-75.22179,40.03769],[-75.22067,40.03731],[-75.21457,40.03995],[-75.21411,40.04013],[-75.21761,40.04342],[-75.21972,40.04291],[-75.2234,40.03891]]]},"properties":{"LISTNAME":"Wissahickon Hills"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.21539,40.02389],[-75.21127,40.01861],[-75.20772,40.0238],[-75.20317,40.02588],[-75.20358,40.02608],[-75.20557,40.02867],[-75.20341,40.0296],[-75.20406,40.03049],[-75.20761,40.03162],[-75.20844,40.03399],[-75.2104,40.03751],[-75.21411,40.04013],[-75.21457,40.03995],[-75.22067,40.03731],[-75.22179,40.03769],[-75.22281,40.03812],[-75.22603,40.03646],[-75.21661,40.02757],[-75.21539,40.02389]]]},"properties":{"LISTNAME":"Roxborough"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.21539,40.02389],[-75.21661,40.02757],[-75.22603,40.03646],[-75.22673,40.03577],[-75.22876,40.03438],[-75.23528,40.03036],[-75.23232,40.02811],[-75.21932,40.02158],[-75.21539,40.02389]]]},"properties":{"LISTNAME":"Manayunk"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.20824,40.01316],[-75.20716,40.01659],[-75.2034,40.01818],[-75.20452,40.02089],[-75.20316,40.02589],[-75.20317,40.02588],[-75.20441,40.02532],[-75.20524,40.02495],[-75.20772,40.0238],[-75.21127,40.01861],[-75.21539,40.02389],[-75.21805,40.02094],[-75.21222,40.01546],[-75.20824,40.01316]]]},"properties":{"LISTNAME":"Wissahickon"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15769,40.05502],[-75.16473,40.0591],[-75.17223,40.05175],[-75.16953,40.04621],[-75.16955,40.04334],[-75.17199,40.03843],[-75.16977,40.03698],[-75.15907,40.03601],[-75.15833,40.03669],[-75.15841,40.04149],[-75.15815,40.04768],[-75.15787,40.05202],[-75.15769,40.05502]]]},"properties":{"LISTNAME":"Germantown, East"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.17199,40.03843],[-75.16955,40.04334],[-75.16953,40.04621],[-75.17223,40.05175],[-75.18095,40.04317],[-75.17481,40.03583],[-75.17199,40.03843]]]},"properties":{"LISTNAME":"Germantown, Morton"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.18095,40.04317],[-75.18231,40.04592],[-75.19099,40.03736],[-75.18918,40.03579],[-75.18872,40.03542],[-75.18809,40.03416],[-75.18791,40.0334],[-75.18774,40.0328],[-75.18778,40.03078],[-75.1862,40.02948],[-75.18476,40.02829],[-75.18354,40.02731],[-75.17896,40.0318],[-75.17477,40.03579],[-75.17481,40.03583],[-75.18095,40.04317]]]},"properties":{"LISTNAME":"Germantown, West Central"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.16661,40.03095],[-75.17477,40.03579],[-75.17896,40.0318],[-75.17101,40.02725],[-75.16661,40.03095]]]},"properties":{"LISTNAME":"Germantown, Penn Knox"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.17101,40.02725],[-75.17896,40.0318],[-75.18354,40.02731],[-75.17691,40.02148],[-75.17101,40.02725]]]},"properties":{"LISTNAME":"Germantown, Westside"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.16208,40.02829],[-75.16661,40.03095],[-75.17101,40.02725],[-75.17691,40.02148],[-75.17256,40.01778],[-75.16965,40.01822],[-75.16512,40.01901],[-75.16393,40.01922],[-75.16154,40.01994],[-75.1608,40.02017],[-75.16067,40.0205],[-75.15904,40.02281],[-75.16008,40.026],[-75.16208,40.02829]]]},"properties":{"LISTNAME":"Germantown, Southwest"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.14292,40.04757],[-75.14297,40.04758],[-75.14655,40.04956],[-75.15023,40.05167],[-75.15786,40.0552],[-75.15769,40.05502],[-75.15787,40.05202],[-75.15815,40.04768],[-75.15841,40.04149],[-75.15449,40.03951],[-75.14477,40.0391],[-75.14359,40.04449],[-75.14333,40.0457],[-75.14315,40.04654],[-75.14292,40.04757]]]},"properties":{"LISTNAME":"Ogontz"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15833,40.03669],[-75.15907,40.03601],[-75.16977,40.03698],[-75.17199,40.03843],[-75.17481,40.03583],[-75.17477,40.03579],[-75.16661,40.03095],[-75.16208,40.02829],[-75.1606,40.02947],[-75.15911,40.03028],[-75.15482,40.03152],[-75.15594,40.03299],[-75.15534,40.0357],[-75.15833,40.03669]]]},"properties":{"LISTNAME":"Wister"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.14906,40.01961],[-75.15639,40.02062],[-75.1607,40.0202],[-75.1608,40.02017],[-75.16154,40.01994],[-75.16177,40.01223],[-75.15158,40.01697],[-75.14961,40.01699],[-75.14906,40.01961]]]},"properties":{"LISTNAME":"Nicetown"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.14961,40.01699],[-75.15158,40.01697],[-75.16177,40.01223],[-75.16181,40.0192],[-75.16393,40.01922],[-75.16512,40.01901],[-75.16965,40.01822],[-75.17256,40.01778],[-75.17585,40.01612],[-75.17832,40.0145],[-75.17095,40.00621],[-75.16561,40.00485],[-75.16592,40.00327],[-75.15293,40.00159],[-75.15125,40.0093],[-75.14961,40.01699]]]},"properties":{"LISTNAME":"Tioga"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.16592,40.00327],[-75.16561,40.00485],[-75.17095,40.00621],[-75.17832,40.0145],[-75.18509,40.01059],[-75.18942,40.00909],[-75.19225,40.00729],[-75.19232,40.00585],[-75.19155,40.00372],[-75.19195,39.99972],[-75.19081,39.99964],[-75.19073,39.99964],[-75.18775,39.99812],[-75.16758,39.99565],[-75.16592,40.00327]]]},"properties":{"LISTNAME":"Allegheny West"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15293,40.00159],[-75.16592,40.00327],[-75.16758,39.99565],[-75.15981,39.99463],[-75.15594,39.99603],[-75.1539,39.99682],[-75.15293,40.00159]]]},"properties":{"LISTNAME":"Glenwood"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.13486,40.04619],[-75.13916,40.0471],[-75.14292,40.04757],[-75.14315,40.04654],[-75.14333,40.0457],[-75.14359,40.04449],[-75.14477,40.0391],[-75.13586,40.0372],[-75.13478,40.03889],[-75.13486,40.04619]]]},"properties":{"LISTNAME":"Fern Rock"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.12363,40.04505],[-75.12256,40.05128],[-75.12214,40.05318],[-75.12902,40.05709],[-75.13519,40.06103],[-75.13695,40.06194],[-75.13931,40.06329],[-75.13953,40.06339],[-75.13981,40.062],[-75.1413,40.05523],[-75.1417,40.05321],[-75.14231,40.05064],[-75.14251,40.04946],[-75.14256,40.04926],[-75.14292,40.04757],[-75.13916,40.0471],[-75.13486,40.04619],[-75.13042,40.046],[-75.12363,40.04505]]]},"properties":{"LISTNAME":"East Oak Lane"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.1111,40.04684],[-75.12214,40.05318],[-75.12256,40.05128],[-75.12363,40.04505],[-75.12208,40.04486],[-75.11275,40.04365],[-75.11243,40.04354],[-75.11229,40.04351],[-75.11223,40.04357],[-75.11208,40.04369],[-75.1111,40.04684]]]},"properties":{"LISTNAME":"Melrose Park Gardens"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.13193,40.0052],[-75.13165,40.00682],[-75.15125,40.0093],[-75.15293,40.00159],[-75.1539,39.99682],[-75.15342,39.99698],[-75.14005,40.00197],[-75.13988,40.00296],[-75.1356,40.00454],[-75.13417,40.00492],[-75.13193,40.0052]]]},"properties":{"LISTNAME":"Franklinville"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.11277,40.02727],[-75.11276,40.02739],[-75.12349,40.02566],[-75.13326,40.02385],[-75.13517,40.01508],[-75.11224,40.01208],[-75.1105,40.01985],[-75.11407,40.0203],[-75.1112,40.02321],[-75.11277,40.02727]]]},"properties":{"LISTNAME":"Feltonville"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.07045,39.98543],[-75.07179,39.98592],[-75.07888,39.99154],[-75.08291,39.99603],[-75.08292,39.99605],[-75.08295,39.99608],[-75.08297,39.9961],[-75.08298,39.99611],[-75.08299,39.99612],[-75.083,39.99613],[-75.08302,39.99616],[-75.08303,39.99616],[-75.08312,39.99625],[-75.08313,39.99626],[-75.08316,39.99629],[-75.08318,39.99631],[-75.08323,39.99635],[-75.08324,39.99636],[-75.0833,39.99641],[-75.08331,39.99642],[-75.08334,39.99645],[-75.08336,39.99646],[-75.08337,39.99648],[-75.08339,39.99649],[-75.08344,39.99653],[-75.08345,39.99654],[-75.08346,39.99654],[-75.0835,39.99658],[-75.08353,39.99661],[-75.08361,39.99667],[-75.08363,39.99669],[-75.08367,39.99672],[-75.08369,39.99674],[-75.08372,39.99676],[-75.08633,39.99888],[-75.10146,39.99104],[-75.10632,39.98853],[-75.11221,39.99518],[-75.11346,39.99645],[-75.12549,39.98984],[-75.12025,39.98476],[-75.11345,39.97705],[-75.10913,39.97916],[-75.1041,39.98076],[-75.10102,39.98243],[-75.09402,39.97431],[-75.08583,39.9751],[-75.0756,39.97804],[-75.07126,39.98049],[-75.06545,39.98491],[-75.06958,39.98632],[-75.07045,39.98543]]]},"properties":{"LISTNAME":"Richmond"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.11322,39.96819],[-75.10229,39.97238],[-75.09402,39.97431],[-75.10102,39.98243],[-75.1041,39.98076],[-75.10913,39.97916],[-75.11345,39.97705],[-75.11831,39.97454],[-75.11322,39.96819]]]},"properties":{"LISTNAME":"Port Richmond"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.11269,40.01041],[-75.11224,40.01208],[-75.13517,40.01508],[-75.13326,40.02385],[-75.13996,40.02094],[-75.1434,40.01933],[-75.14906,40.01961],[-75.14961,40.01699],[-75.15125,40.0093],[-75.13165,40.00682],[-75.13193,40.0052],[-75.12785,40.00532],[-75.1141,40.00351],[-75.1136,40.00603],[-75.11269,40.01041]]]},"properties":{"LISTNAME":"Hunting Park"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.0944,40.01478],[-75.09878,40.01634],[-75.10673,40.01643],[-75.10757,40.01732],[-75.10317,40.02119],[-75.10488,40.02363],[-75.10925,40.02211],[-75.1112,40.02321],[-75.11407,40.0203],[-75.1105,40.01985],[-75.11224,40.01208],[-75.11269,40.01041],[-75.1136,40.00603],[-75.11408,40.00361],[-75.11005,40.00232],[-75.10413,40.00156],[-75.10301,40.0022],[-75.09699,40.00137],[-75.09303,40.00222],[-75.09023,40.00421],[-75.09276,40.00568],[-75.0921,40.00717],[-75.09505,40.00964],[-75.09346,40.01277],[-75.0944,40.01478]]]},"properties":{"LISTNAME":"Juniata Park"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.08638,39.99894],[-75.08841,40.0033],[-75.09023,40.00421],[-75.09303,40.00222],[-75.09699,40.00137],[-75.10301,40.0022],[-75.10413,40.00156],[-75.11005,40.00232],[-75.11408,40.00361],[-75.11428,40.00209],[-75.11487,39.99943],[-75.1152,39.99799],[-75.11544,39.99676],[-75.11433,39.99659],[-75.11347,39.99646],[-75.11221,39.99518],[-75.10632,39.98853],[-75.10146,39.99104],[-75.08633,39.99888],[-75.08638,39.99894]]]},"properties":{"LISTNAME":"Harrowgate"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.13617,39.99162],[-75.13537,39.99709],[-75.13375,40.0023],[-75.13395,40.00386],[-75.1356,40.00454],[-75.13988,40.00296],[-75.14005,40.00197],[-75.14057,39.99998],[-75.1409,39.99839],[-75.14123,39.99691],[-75.14183,39.99391],[-75.14219,39.99234],[-75.14216,39.99233],[-75.14153,39.99224],[-75.13927,39.99203],[-75.13617,39.99162]]]},"properties":{"LISTNAME":"Fairhill"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.1141,40.00351],[-75.12785,40.00532],[-75.13193,40.0052],[-75.13417,40.00492],[-75.13395,40.00386],[-75.13375,40.0023],[-75.13537,39.99709],[-75.13064,39.99473],[-75.12599,39.99027],[-75.12549,39.98984],[-75.11346,39.99645],[-75.11544,39.99676],[-75.1152,39.99799],[-75.11487,39.99943],[-75.11428,40.00209],[-75.1141,40.00351]]]},"properties":{"LISTNAME":"Upper Kensington"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.13615,39.99162],[-75.12599,39.99027],[-75.13064,39.99473],[-75.13537,39.99709],[-75.13615,39.99162]]]},"properties":{"LISTNAME":"McGuire"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15594,39.99603],[-75.15981,39.99463],[-75.16933,39.99021],[-75.17166,39.98966],[-75.17541,39.98716],[-75.17436,39.98703],[-75.15654,39.98468],[-75.15453,39.99394],[-75.15594,39.99603]]]},"properties":{"LISTNAME":"Stanton"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.17436,39.98703],[-75.17541,39.98716],[-75.17609,39.9868],[-75.1788,39.98528],[-75.18732,39.97958],[-75.18923,39.97884],[-75.18894,39.97706],[-75.18739,39.97536],[-75.18727,39.97506],[-75.1851,39.97478],[-75.17786,39.97383],[-75.17598,39.97957],[-75.17436,39.98703]]]},"properties":{"LISTNAME":"Brewerytown"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.16722,39.9734],[-75.17029,39.97885],[-75.17598,39.97957],[-75.17786,39.97383],[-75.17654,39.97231],[-75.171,39.97295],[-75.16722,39.9734]]]},"properties":{"LISTNAME":"Sharswood"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15654,39.98468],[-75.17436,39.98703],[-75.17598,39.97957],[-75.17029,39.97885],[-75.16722,39.9734],[-75.16654,39.97238],[-75.16112,39.97169],[-75.15934,39.97145],[-75.15934,39.97146],[-75.15751,39.98018],[-75.15654,39.98468]]]},"properties":{"LISTNAME":"North Central"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15751,39.98018],[-75.15934,39.97146],[-75.15097,39.97052],[-75.14909,39.97912],[-75.15751,39.98018]]]},"properties":{"LISTNAME":"Yorktown"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.14504,39.97858],[-75.14909,39.97912],[-75.15097,39.97052],[-75.14655,39.97038],[-75.14532,39.97708],[-75.14504,39.97858]]]},"properties":{"LISTNAME":"Ludlow"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.14504,39.97858],[-75.14405,39.98372],[-75.1435,39.98628],[-75.14317,39.98777],[-75.14285,39.98926],[-75.14252,39.99076],[-75.14217,39.99234],[-75.14219,39.99234],[-75.14183,39.99391],[-75.14152,39.99541],[-75.14123,39.99691],[-75.1409,39.99839],[-75.14005,40.00197],[-75.15342,39.99698],[-75.1539,39.99682],[-75.15594,39.99603],[-75.15453,39.99394],[-75.15654,39.98468],[-75.15751,39.98018],[-75.14909,39.97912],[-75.14504,39.97858]]]},"properties":{"LISTNAME":"Hartranft"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.13433,39.975],[-75.13323,39.98012],[-75.13295,39.98159],[-75.13195,39.98632],[-75.12549,39.98984],[-75.12599,39.99027],[-75.13615,39.99162],[-75.13617,39.99162],[-75.13927,39.99203],[-75.14153,39.99224],[-75.14217,39.99234],[-75.14252,39.99076],[-75.14285,39.98926],[-75.14317,39.98777],[-75.1435,39.98628],[-75.14405,39.98372],[-75.14504,39.97858],[-75.14532,39.97708],[-75.13706,39.97604],[-75.13433,39.975]]]},"properties":{"LISTNAME":"Kensington, West"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.12718,39.96086],[-75.11949,39.96537],[-75.11322,39.96819],[-75.11831,39.97454],[-75.11345,39.97705],[-75.12025,39.98476],[-75.12758,39.98139],[-75.13045,39.97859],[-75.13319,39.98014],[-75.13322,39.98014],[-75.13323,39.98012],[-75.13433,39.975],[-75.13623,39.96889],[-75.13673,39.96725],[-75.13048,39.9663],[-75.12718,39.96086]]]},"properties":{"LISTNAME":"Fishtown - Lower Kensington"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.13433,39.975],[-75.13706,39.97604],[-75.14532,39.97708],[-75.14655,39.97038],[-75.13623,39.96889],[-75.13433,39.975]]]},"properties":{"LISTNAME":"Kensington, Old"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.12718,39.96086],[-75.13048,39.9663],[-75.13673,39.96725],[-75.13623,39.96889],[-75.14655,39.97038],[-75.14821,39.96128],[-75.14891,39.95755],[-75.14862,39.95754],[-75.14796,39.95749],[-75.14652,39.95727],[-75.14038,39.95553],[-75.13993,39.9569],[-75.1392,39.9593],[-75.13894,39.96044],[-75.13139,39.95774],[-75.12718,39.96086]]]},"properties":{"LISTNAME":"Northern Liberties"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.14477,40.0391],[-75.15449,40.03951],[-75.15841,40.04149],[-75.15833,40.03669],[-75.15534,40.0357],[-75.15594,40.03299],[-75.15482,40.03152],[-75.15911,40.03028],[-75.1606,40.02947],[-75.16208,40.02829],[-75.16008,40.026],[-75.15904,40.02281],[-75.16067,40.0205],[-75.1607,40.0202],[-75.15639,40.02062],[-75.14906,40.01961],[-75.1434,40.01933],[-75.13996,40.02094],[-75.1374,40.03269],[-75.14001,40.03426],[-75.13647,40.03724],[-75.14477,40.0391]]]},"properties":{"LISTNAME":"Logan"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.14281,39.94666],[-75.15426,39.94809],[-75.15549,39.94238],[-75.15232,39.94197],[-75.14758,39.94138],[-75.14393,39.94153],[-75.14337,39.9442],[-75.14281,39.94666]]]},"properties":{"LISTNAME":"Society Hill"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.14038,39.95553],[-75.14652,39.95727],[-75.14796,39.95749],[-75.14862,39.95754],[-75.14929,39.95756],[-75.15125,39.95698],[-75.15391,39.95703],[-75.15471,39.95335],[-75.15516,39.95133],[-75.15426,39.94809],[-75.14281,39.94666],[-75.14263,39.94748],[-75.14038,39.95553]]]},"properties":{"LISTNAME":"Old City"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15391,39.95703],[-75.15706,39.95741],[-75.15768,39.95749],[-75.15784,39.95751],[-75.15786,39.95375],[-75.15471,39.95335],[-75.15391,39.95703]]]},"properties":{"LISTNAME":"Chinatown"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15471,39.95335],[-75.15786,39.95375],[-75.15784,39.95751],[-75.16023,39.9578],[-75.16242,39.9581],[-75.16303,39.95534],[-75.16322,39.95445],[-75.1653,39.95229],[-75.1646,39.95171],[-75.1623,39.95222],[-75.15516,39.95133],[-75.15471,39.95335]]]},"properties":{"LISTNAME":"Center City East"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15549,39.94238],[-75.15426,39.94809],[-75.1536,39.95114],[-75.15516,39.95133],[-75.1623,39.95222],[-75.16382,39.95161],[-75.16557,39.94367],[-75.15864,39.94278],[-75.15549,39.94238]]]},"properties":{"LISTNAME":"Washington Square West"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.171,39.97295],[-75.17654,39.97231],[-75.17786,39.97383],[-75.1851,39.97478],[-75.18655,39.97352],[-75.18314,39.9704],[-75.18283,39.97013],[-75.17986,39.96742],[-75.17968,39.96742],[-75.17375,39.96731],[-75.17134,39.96727],[-75.171,39.97295]]]},"properties":{"LISTNAME":"Fairmount"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15934,39.97145],[-75.16112,39.97169],[-75.16654,39.97238],[-75.16722,39.9734],[-75.171,39.97295],[-75.17134,39.96727],[-75.16032,39.96705],[-75.15934,39.97145]]]},"properties":{"LISTNAME":"Francisville"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.16137,39.96223],[-75.16032,39.96705],[-75.17134,39.96727],[-75.17375,39.96731],[-75.17968,39.96742],[-75.17986,39.96742],[-75.17985,39.96742],[-75.17905,39.96672],[-75.17879,39.96656],[-75.17815,39.96592],[-75.17628,39.96425],[-75.1759,39.96418],[-75.171,39.96357],[-75.16786,39.96321],[-75.16162,39.9624],[-75.16137,39.96223]]]},"properties":{"LISTNAME":"Spring Garden"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.1759,39.96418],[-75.18356,39.96423],[-75.18175,39.96212],[-75.18005,39.96012],[-75.17935,39.95822],[-75.18004,39.95445],[-75.17318,39.95357],[-75.16522,39.95258],[-75.16322,39.95445],[-75.16303,39.95534],[-75.16221,39.95909],[-75.16162,39.9624],[-75.16786,39.96321],[-75.171,39.96357],[-75.1759,39.96418]]]},"properties":{"LISTNAME":"Logan Square"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.16557,39.94367],[-75.16382,39.95161],[-75.1646,39.95171],[-75.1653,39.95229],[-75.17318,39.95357],[-75.18004,39.95445],[-75.18156,39.95149],[-75.18333,39.94934],[-75.17899,39.94875],[-75.17972,39.94545],[-75.16557,39.94367]]]},"properties":{"LISTNAME":"Rittenhouse"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.17972,39.94545],[-75.17899,39.94875],[-75.18333,39.94934],[-75.18455,39.94862],[-75.18565,39.94802],[-75.1878,39.94657],[-75.1857,39.94528],[-75.18061,39.94463],[-75.17972,39.94545]]]},"properties":{"LISTNAME":"Fitler Square"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.17972,39.94545],[-75.18061,39.94463],[-75.1857,39.94528],[-75.1878,39.94657],[-75.18875,39.94592],[-75.19277,39.94263],[-75.18805,39.9401],[-75.18494,39.9401],[-75.16687,39.93789],[-75.16557,39.94367],[-75.17972,39.94545]]]},"properties":{"LISTNAME":"Graduate Hospital"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.16826,39.93046],[-75.16687,39.93789],[-75.18494,39.9401],[-75.18702,39.93039],[-75.18523,39.93016],[-75.17529,39.92887],[-75.17476,39.93131],[-75.16826,39.93046]]]},"properties":{"LISTNAME":"Point Breeze"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15864,39.94278],[-75.16557,39.94367],[-75.16687,39.93789],[-75.15995,39.93677],[-75.15864,39.94278]]]},"properties":{"LISTNAME":"Hawthorne"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15549,39.94238],[-75.15864,39.94278],[-75.15995,39.93677],[-75.15539,39.93555],[-75.15385,39.93512],[-75.15232,39.94197],[-75.15549,39.94238]]]},"properties":{"LISTNAME":"Bella Vista"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.14406,39.94097],[-75.14758,39.94138],[-75.15232,39.94197],[-75.15385,39.93512],[-75.1508,39.93429],[-75.14572,39.93344],[-75.14376,39.93826],[-75.14466,39.93832],[-75.14459,39.93861],[-75.14439,39.93955],[-75.14406,39.94097]]]},"properties":{"LISTNAME":"Queen Village"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15385,39.93512],[-75.15539,39.93555],[-75.15647,39.93063],[-75.15712,39.92776],[-75.15767,39.92527],[-75.15609,39.92509],[-75.15458,39.92488],[-75.15294,39.92468],[-75.15259,39.92633],[-75.1508,39.93429],[-75.15385,39.93512]]]},"properties":{"LISTNAME":"Dickinson Narrows"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.16826,39.93046],[-75.15684,39.92897],[-75.15647,39.93063],[-75.15539,39.93555],[-75.15995,39.93677],[-75.16687,39.93789],[-75.16826,39.93046]]]},"properties":{"LISTNAME":"Passyunk Square"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15767,39.92527],[-75.16076,39.9257],[-75.1613,39.9233],[-75.15663,39.92269],[-75.15345,39.92229],[-75.15294,39.92468],[-75.15458,39.92488],[-75.15609,39.92509],[-75.15767,39.92527]]]},"properties":{"LISTNAME":"Greenwich"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.1613,39.9233],[-75.16957,39.92436],[-75.16986,39.92312],[-75.17016,39.92187],[-75.17042,39.92064],[-75.17095,39.91813],[-75.17113,39.91733],[-75.17126,39.91674],[-75.17067,39.91667],[-75.17017,39.91661],[-75.1693,39.91651],[-75.16045,39.91539],[-75.15827,39.91515],[-75.15771,39.91772],[-75.15716,39.92021],[-75.15663,39.92269],[-75.1613,39.9233]]]},"properties":{"LISTNAME":"Lower Moyamensing"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15345,39.92229],[-75.15663,39.92269],[-75.15716,39.92021],[-75.15771,39.91772],[-75.15827,39.91515],[-75.15752,39.91507],[-75.15585,39.91487],[-75.15166,39.91427],[-75.15007,39.91405],[-75.14836,39.9138],[-75.14799,39.91517],[-75.14774,39.91678],[-75.14822,39.92034],[-75.14804,39.92154],[-75.15345,39.92229]]]},"properties":{"LISTNAME":"Whitman"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.18893,39.92191],[-75.19536,39.92083],[-75.19429,39.92589],[-75.19672,39.92849],[-75.20647,39.93331],[-75.20745,39.9335],[-75.21155,39.92842],[-75.2126,39.92534],[-75.21765,39.9273],[-75.21769,39.92732],[-75.22627,39.9146],[-75.22839,39.91247],[-75.22988,39.91142],[-75.23036,39.91106],[-75.22484,39.90244],[-75.22593,39.89864],[-75.23105,39.89322],[-75.22456,39.89199],[-75.21196,39.89766],[-75.20825,39.89552],[-75.19717,39.89268],[-75.19397,39.89499],[-75.19003,39.8968],[-75.19332,39.89971],[-75.19312,39.90264],[-75.19011,39.91454],[-75.18893,39.92191]]]},"properties":{"LISTNAME":"Industrial"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.25759,39.87626],[-75.25226,39.87594],[-75.24843,39.87649],[-75.24673,39.87507],[-75.24047,39.87238],[-75.23637,39.87619],[-75.23412,39.87718],[-75.21977,39.87548],[-75.21572,39.87609],[-75.21604,39.87112],[-75.21146,39.86701],[-75.19986,39.87322],[-75.19396,39.87824],[-75.19575,39.89182],[-75.19634,39.89218],[-75.19717,39.89268],[-75.20825,39.89552],[-75.21196,39.89766],[-75.22456,39.89199],[-75.23105,39.89322],[-75.23638,39.89117],[-75.23974,39.88904],[-75.24193,39.88645],[-75.24541,39.8806],[-75.25174,39.87737],[-75.25759,39.87626]]]},"properties":{"LISTNAME":"Airport"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.24487,39.91547],[-75.24735,39.91842],[-75.24707,39.91378],[-75.25124,39.91011],[-75.25032,39.90763],[-75.25349,39.90559],[-75.25129,39.9044],[-75.24889,39.90311],[-75.24307,39.90959],[-75.24249,39.91018],[-75.24229,39.91029],[-75.24308,39.91275],[-75.24487,39.91547]]]},"properties":{"LISTNAME":"Clearview"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.23036,39.91106],[-75.23369,39.91408],[-75.24327,39.91307],[-75.24308,39.91275],[-75.24236,39.91049],[-75.24229,39.91029],[-75.24189,39.90905],[-75.23997,39.9042],[-75.23769,39.90479],[-75.23405,39.90766],[-75.23036,39.91106]]]},"properties":{"LISTNAME":"Penrose"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.22529,39.92917],[-75.22261,39.93074],[-75.22329,39.93131],[-75.22587,39.9335],[-75.22724,39.93465],[-75.23555,39.92892],[-75.24434,39.93044],[-75.2443,39.92635],[-75.24735,39.92244],[-75.24735,39.91842],[-75.24487,39.91547],[-75.24248,39.91691],[-75.24108,39.91787],[-75.22885,39.92672],[-75.22529,39.92917]]]},"properties":{"LISTNAME":"Paschall"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.20647,39.93331],[-75.20452,39.93622],[-75.20525,39.94132],[-75.20601,39.94133],[-75.20796,39.94129],[-75.20957,39.94018],[-75.2143,39.93692],[-75.21388,39.93591],[-75.21586,39.93309],[-75.22106,39.93185],[-75.22261,39.93074],[-75.22529,39.92917],[-75.22237,39.92642],[-75.2209,39.92573],[-75.21939,39.92799],[-75.21765,39.9273],[-75.2126,39.92534],[-75.21155,39.92842],[-75.20745,39.9335],[-75.20647,39.93331]]]},"properties":{"LISTNAME":"Bartram Village"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.21524,39.94308],[-75.22473,39.94547],[-75.22742,39.94781],[-75.23126,39.94792],[-75.2401,39.94586],[-75.24698,39.94331],[-75.24015,39.94209],[-75.23957,39.93804],[-75.235,39.93813],[-75.23741,39.93265],[-75.24218,39.93343],[-75.24434,39.93044],[-75.23555,39.92892],[-75.22724,39.93465],[-75.22027,39.93957],[-75.21524,39.94308]]]},"properties":{"LISTNAME":"Kingsessing"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.22654,39.952],[-75.22599,39.95459],[-75.22486,39.95997],[-75.23675,39.96146],[-75.24537,39.96253],[-75.24734,39.96277],[-75.24854,39.96027],[-75.25085,39.9591],[-75.249,39.95691],[-75.25164,39.95196],[-75.25137,39.94907],[-75.24698,39.94331],[-75.2401,39.94586],[-75.23126,39.94792],[-75.22742,39.94781],[-75.22654,39.952]]]},"properties":{"LISTNAME":"Cobbs Creek"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.22485,39.95997],[-75.22486,39.95997],[-75.22599,39.95459],[-75.22206,39.95411],[-75.21415,39.95312],[-75.21368,39.95548],[-75.21302,39.95852],[-75.21898,39.95927],[-75.22485,39.95997]]]},"properties":{"LISTNAME":"Walnut Hill"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.22654,39.952],[-75.22742,39.94781],[-75.22473,39.94547],[-75.21524,39.94308],[-75.21503,39.94329],[-75.21137,39.94579],[-75.21502,39.94885],[-75.21469,39.95055],[-75.22258,39.95152],[-75.22654,39.952]]]},"properties":{"LISTNAME":"Cedar Park"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.21415,39.95312],[-75.22206,39.95411],[-75.22599,39.95459],[-75.22654,39.952],[-75.22258,39.95152],[-75.21469,39.95055],[-75.21415,39.95312]]]},"properties":{"LISTNAME":"Garden Court"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.20861,39.94546],[-75.20824,39.94576],[-75.20699,39.94686],[-75.20515,39.94852],[-75.20398,39.9499],[-75.20575,39.94983],[-75.20926,39.94954],[-75.20861,39.94546]]]},"properties":{"LISTNAME":"Woodland Terrace"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.20415,39.9574],[-75.20504,39.9575],[-75.21302,39.95852],[-75.21368,39.95548],[-75.21415,39.95312],[-75.21469,39.95055],[-75.21502,39.94885],[-75.21137,39.94579],[-75.21091,39.94615],[-75.20861,39.94546],[-75.20926,39.94954],[-75.20575,39.94983],[-75.20557,39.95206],[-75.20514,39.95441],[-75.20477,39.95595],[-75.20415,39.9574]]]},"properties":{"LISTNAME":"Spruce Hill"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.20861,39.94546],[-75.21091,39.94615],[-75.21137,39.94579],[-75.21503,39.94329],[-75.21524,39.94308],[-75.22027,39.93957],[-75.22724,39.93465],[-75.22587,39.9335],[-75.22329,39.93131],[-75.22261,39.93074],[-75.22106,39.93185],[-75.21586,39.93309],[-75.21388,39.93591],[-75.2143,39.93692],[-75.20957,39.94018],[-75.20796,39.94129],[-75.20601,39.94133],[-75.20525,39.94132],[-75.20394,39.94291],[-75.20824,39.94576],[-75.20861,39.94546]]]},"properties":{"LISTNAME":"Southwest Schuylkill"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.18004,39.95445],[-75.17935,39.95822],[-75.18004,39.96009],[-75.18005,39.96012],[-75.18175,39.96212],[-75.18282,39.96337],[-75.18727,39.96261],[-75.1873,39.96259],[-75.18729,39.96259],[-75.18723,39.96258],[-75.18709,39.96181],[-75.18705,39.96122],[-75.18715,39.96052],[-75.18754,39.95886],[-75.19084,39.95877],[-75.19117,39.9573],[-75.19585,39.95969],[-75.19586,39.95968],[-75.19868,39.95943],[-75.20097,39.9578],[-75.20412,39.9574],[-75.20415,39.9574],[-75.20477,39.95595],[-75.20514,39.95441],[-75.20557,39.95206],[-75.20575,39.94983],[-75.20398,39.9499],[-75.20515,39.94852],[-75.20699,39.94686],[-75.20824,39.94576],[-75.20394,39.94291],[-75.20035,39.94372],[-75.19377,39.9422],[-75.19277,39.94263],[-75.18875,39.94592],[-75.1878,39.94657],[-75.18706,39.94708],[-75.18565,39.94802],[-75.18455,39.94862],[-75.18333,39.94934],[-75.18156,39.95149],[-75.18004,39.95445]]]},"properties":{"LISTNAME":"University City"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.18754,39.95886],[-75.18742,39.95943],[-75.18759,39.96048],[-75.18715,39.96052],[-75.18705,39.96122],[-75.18723,39.96258],[-75.18835,39.96249],[-75.19889,39.96126],[-75.19585,39.95969],[-75.19117,39.9573],[-75.18754,39.95886]]]},"properties":{"LISTNAME":"Powelton"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.19889,39.96126],[-75.20193,39.96291],[-75.21055,39.96252],[-75.21301,39.96256],[-75.21397,39.95864],[-75.21302,39.95852],[-75.20504,39.9575],[-75.20412,39.9574],[-75.20097,39.9578],[-75.19868,39.95943],[-75.19586,39.95968],[-75.19585,39.95969],[-75.19889,39.96126]]]},"properties":{"LISTNAME":"West Powelton"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.19931,39.97462],[-75.20372,39.97417],[-75.21344,39.97772],[-75.21227,39.9732],[-75.20985,39.97347],[-75.20381,39.97153],[-75.19869,39.97206],[-75.19931,39.97462]]]},"properties":{"LISTNAME":"East Parkside"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.20381,39.97153],[-75.20985,39.97347],[-75.21227,39.97319],[-75.21133,39.96873],[-75.20225,39.9631],[-75.20381,39.97153]]]},"properties":{"LISTNAME":"Belmont"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.20193,39.96291],[-75.20225,39.9631],[-75.21133,39.96873],[-75.21055,39.96252],[-75.20193,39.96291]]]},"properties":{"LISTNAME":"Haverford North"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.21344,39.97772],[-75.2241,39.98151],[-75.22681,39.97722],[-75.21847,39.97301],[-75.21227,39.9732],[-75.21344,39.97772]]]},"properties":{"LISTNAME":"West Parkside"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.21227,39.97319],[-75.21847,39.97301],[-75.22581,39.97143],[-75.22457,39.96492],[-75.22,39.9638],[-75.21898,39.95927],[-75.21397,39.95864],[-75.21301,39.96256],[-75.21055,39.96252],[-75.21133,39.96873],[-75.21227,39.97319]]]},"properties":{"LISTNAME":"Mill Creek"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.21898,39.95927],[-75.22,39.9638],[-75.22457,39.96492],[-75.22485,39.95997],[-75.21898,39.95927]]]},"properties":{"LISTNAME":"Dunlap"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.18727,39.96261],[-75.18356,39.96423],[-75.18495,39.96612],[-75.19058,39.97006],[-75.19315,39.9753],[-75.19931,39.97462],[-75.19869,39.97206],[-75.20381,39.97153],[-75.20225,39.9631],[-75.20193,39.96291],[-75.19889,39.96126],[-75.18835,39.96249],[-75.1873,39.96259],[-75.18727,39.96261]]]},"properties":{"LISTNAME":"Mantua"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.22581,39.97143],[-75.23908,39.96988],[-75.24478,39.97178],[-75.24548,39.97533],[-75.24751,39.97508],[-75.24649,39.96894],[-75.24745,39.96439],[-75.24672,39.96271],[-75.24537,39.96253],[-75.23675,39.96146],[-75.22486,39.95997],[-75.22485,39.95997],[-75.22457,39.96492],[-75.22581,39.97143]]]},"properties":{"LISTNAME":"Haddington"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.22681,39.97722],[-75.22719,39.9774],[-75.24548,39.97533],[-75.24478,39.97178],[-75.23908,39.96988],[-75.22581,39.97143],[-75.21847,39.97301],[-75.22681,39.97722]]]},"properties":{"LISTNAME":"Carroll Park"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.22719,39.9774],[-75.2324,39.97973],[-75.24573,39.98426],[-75.24669,39.98607],[-75.22613,39.99574],[-75.22837,40.00032],[-75.25612,39.9873],[-75.26369,39.98266],[-75.27648,39.97696],[-75.28026,39.97497],[-75.27861,39.97226],[-75.2756,39.97021],[-75.27042,39.96848],[-75.27,39.96748],[-75.26545,39.96526],[-75.26049,39.96631],[-75.25668,39.96372],[-75.25414,39.96541],[-75.24805,39.96408],[-75.24672,39.96271],[-75.24745,39.96439],[-75.24649,39.96894],[-75.24751,39.97508],[-75.24548,39.97533],[-75.22719,39.9774]]]},"properties":{"LISTNAME":"Overbrook"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.21767,39.99435],[-75.21527,39.99629],[-75.20762,39.99805],[-75.20415,40.00039],[-75.20102,40.00412],[-75.20764,40.0064],[-75.20387,40.00806],[-75.20798,40.00985],[-75.22069,40.00393],[-75.21767,39.99435]]]},"properties":{"LISTNAME":"Wynnefield Heights"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.14891,39.95755],[-75.14821,39.96128],[-75.15249,39.96148],[-75.15454,39.96158],[-75.16139,39.96217],[-75.16221,39.95909],[-75.16023,39.9578],[-75.15768,39.95749],[-75.15706,39.95741],[-75.15125,39.95698],[-75.15098,39.95729],[-75.14929,39.95756],[-75.14891,39.95755]]]},"properties":{"LISTNAME":"Callowhill"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15454,39.96158],[-75.15249,39.96148],[-75.15097,39.97052],[-75.15934,39.97145],[-75.16032,39.96705],[-75.16137,39.96223],[-75.15454,39.96158]]]},"properties":{"LISTNAME":"West Poplar"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.14655,39.97038],[-75.15097,39.97052],[-75.15249,39.96148],[-75.14821,39.96128],[-75.14655,39.97038]]]},"properties":{"LISTNAME":"East Poplar"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.17541,39.98716],[-75.17166,39.98966],[-75.16933,39.99021],[-75.15981,39.99463],[-75.16758,39.99565],[-75.18775,39.99812],[-75.19073,39.99964],[-75.19086,39.998],[-75.18789,39.99654],[-75.18774,39.99554],[-75.1875,39.99483],[-75.1864,39.99279],[-75.18727,39.98878],[-75.18923,39.97884],[-75.18732,39.97958],[-75.1788,39.98528],[-75.17609,39.9868],[-75.17541,39.98716]]]},"properties":{"LISTNAME":"Strawberry Mansion"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.19073,39.99964],[-75.19195,39.99972],[-75.19402,39.99532],[-75.20115,39.98762],[-75.20407,39.98584],[-75.20455,39.98322],[-75.20205,39.98052],[-75.19448,39.97658],[-75.19315,39.9753],[-75.19058,39.97006],[-75.18495,39.96612],[-75.18356,39.96423],[-75.17628,39.96425],[-75.17815,39.96592],[-75.17879,39.96656],[-75.17985,39.96742],[-75.17986,39.96742],[-75.18015,39.96772],[-75.1816,39.96918],[-75.18283,39.97013],[-75.18314,39.9704],[-75.18655,39.97352],[-75.18727,39.97506],[-75.18739,39.97536],[-75.18894,39.97706],[-75.18923,39.97884],[-75.18727,39.98878],[-75.1864,39.99279],[-75.1875,39.99483],[-75.18774,39.99554],[-75.18789,39.99654],[-75.19086,39.998],[-75.19073,39.99964]]]},"properties":{"LISTNAME":"East Park"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.21767,39.99435],[-75.22069,40.00393],[-75.22837,40.00032],[-75.22613,39.99574],[-75.24669,39.98607],[-75.24573,39.98426],[-75.2324,39.97973],[-75.22719,39.9774],[-75.22681,39.97722],[-75.2241,39.98151],[-75.22686,39.98269],[-75.22495,39.98748],[-75.22008,39.99031],[-75.21767,39.99435]]]},"properties":{"LISTNAME":"Wynnefield"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.19931,39.97462],[-75.19315,39.9753],[-75.19448,39.97658],[-75.20205,39.98052],[-75.20455,39.98322],[-75.20407,39.98584],[-75.20115,39.98762],[-75.19402,39.99532],[-75.19195,39.99972],[-75.19155,40.00372],[-75.19232,40.00585],[-75.19272,40.00647],[-75.20335,40.01012],[-75.2066,40.01167],[-75.20798,40.00985],[-75.20387,40.00806],[-75.20764,40.0064],[-75.20102,40.00412],[-75.20415,40.00039],[-75.20762,39.99805],[-75.21527,39.99629],[-75.21767,39.99435],[-75.22008,39.99031],[-75.22495,39.98748],[-75.22686,39.98269],[-75.2241,39.98151],[-75.21344,39.97772],[-75.20372,39.97417],[-75.19931,39.97462]]]},"properties":{"LISTNAME":"West Park"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-74.98665,40.0993],[-74.99441,40.10618],[-74.99713,40.10815],[-75.00181,40.10495],[-74.9913,40.09576],[-74.98665,40.0993]]]},"properties":{"LISTNAME":"Normandy Village"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.14885,39.90862],[-75.14783,39.91372],[-75.14794,39.91374],[-75.15007,39.91405],[-75.15166,39.91427],[-75.15585,39.91487],[-75.15752,39.91507],[-75.15922,39.91526],[-75.15988,39.91533],[-75.16045,39.91539],[-75.1693,39.91651],[-75.17017,39.91661],[-75.17067,39.91667],[-75.17126,39.91674],[-75.17176,39.91456],[-75.17194,39.91389],[-75.1723,39.91235],[-75.17503,39.89899],[-75.1754,39.89735],[-75.16189,39.89683],[-75.1511,39.89552],[-75.14885,39.90862]]]},"properties":{"LISTNAME":"Stadium District"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.17343,39.8971],[-75.1754,39.89735],[-75.17694,39.89902],[-75.19003,39.8968],[-75.19397,39.89499],[-75.19717,39.89268],[-75.19634,39.89218],[-75.19575,39.89182],[-75.19396,39.87824],[-75.1901,39.88035],[-75.18395,39.88189],[-75.18011,39.8822],[-75.16287,39.88265],[-75.15065,39.88351],[-75.14374,39.885],[-75.13729,39.88997],[-75.13554,39.89282],[-75.1413,39.89423],[-75.16189,39.89683],[-75.17343,39.8971]]]},"properties":{"LISTNAME":"Navy Yard"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.12025,39.98476],[-75.12549,39.98984],[-75.13195,39.98632],[-75.13295,39.98159],[-75.13322,39.98014],[-75.13319,39.98014],[-75.13045,39.97859],[-75.12758,39.98139],[-75.12025,39.98476]]]},"properties":{"LISTNAME":"East Kensington"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.22839,39.91247],[-75.22627,39.9146],[-75.21769,39.92732],[-75.21939,39.92799],[-75.2209,39.92573],[-75.22237,39.92642],[-75.22529,39.92917],[-75.22885,39.92672],[-75.24108,39.91787],[-75.24248,39.91691],[-75.24487,39.91547],[-75.24327,39.91307],[-75.23369,39.91408],[-75.23036,39.91106],[-75.22988,39.91142],[-75.22839,39.91247]]]},"properties":{"LISTNAME":"Elmwood"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.18694,39.92233],[-75.18695,39.92229],[-75.18893,39.92191],[-75.19011,39.91454],[-75.18804,39.91416],[-75.1723,39.91235],[-75.17194,39.91389],[-75.17176,39.91456],[-75.17113,39.91733],[-75.17095,39.91813],[-75.17042,39.92064],[-75.17016,39.92187],[-75.17015,39.92188],[-75.17664,39.92271],[-75.1763,39.92425],[-75.18694,39.92233]]]},"properties":{"LISTNAME":"Girard Estates"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.25759,39.87626],[-75.25174,39.87737],[-75.24541,39.8806],[-75.24193,39.88645],[-75.23974,39.88904],[-75.23638,39.89117],[-75.23105,39.89322],[-75.22593,39.89864],[-75.22484,39.90244],[-75.23036,39.91106],[-75.23405,39.90766],[-75.23769,39.90479],[-75.23997,39.9042],[-75.24189,39.90905],[-75.24229,39.91029],[-75.24249,39.91018],[-75.24307,39.90959],[-75.24889,39.90311],[-75.25129,39.9044],[-75.2556,39.8996],[-75.25509,39.89867],[-75.25911,39.89244],[-75.26174,39.89178],[-75.26269,39.88834],[-75.26427,39.8884],[-75.2646,39.88474],[-75.26239,39.88345],[-75.26493,39.88111],[-75.26333,39.87971],[-75.26253,39.87656],[-75.25759,39.87626]]]},"properties":{"LISTNAME":"Eastwick"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.1723,39.91235],[-75.18804,39.91416],[-75.19011,39.91454],[-75.19312,39.90264],[-75.19332,39.89971],[-75.19003,39.8968],[-75.17694,39.89902],[-75.17503,39.89899],[-75.1723,39.91235]]]},"properties":{"LISTNAME":"Packer Park"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.14804,39.92154],[-75.14654,39.93005],[-75.14572,39.93344],[-75.1508,39.93429],[-75.15259,39.92633],[-75.15294,39.92468],[-75.15337,39.92273],[-75.15345,39.92229],[-75.14804,39.92154]]]},"properties":{"LISTNAME":"Pennsport"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.17015,39.92188],[-75.16957,39.92436],[-75.16826,39.93046],[-75.17476,39.93131],[-75.17529,39.92887],[-75.17556,39.92765],[-75.17664,39.92271],[-75.17015,39.92188]]]},"properties":{"LISTNAME":"Newbold"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.1763,39.92425],[-75.17556,39.92765],[-75.17529,39.92887],[-75.18523,39.93016],[-75.18683,39.92277],[-75.18694,39.92233],[-75.1763,39.92425]]]},"properties":{"LISTNAME":"West Passyunk"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.15712,39.92776],[-75.15684,39.92897],[-75.16826,39.93046],[-75.16957,39.92436],[-75.1613,39.9233],[-75.16076,39.9257],[-75.15767,39.92527],[-75.15712,39.92776]]]},"properties":{"LISTNAME":"East Passyunk"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-75.19712,40.03339],[-75.19925,40.03274],[-75.19966,40.03233],[-75.19807,40.03091],[-75.19694,40.02744],[-75.19679,40.02743],[-75.1964,40.02746],[-75.19629,40.02749],[-75.19621,40.02751],[-75.19613,40.02752],[-75.19291,40.02755],[-75.19276,40.02752],[-75.19261,40.02732],[-75.18995,40.02914],[-75.18971,40.02923],[-75.18941,40.02929],[-75.1889,40.02935],[-75.18872,40.02947],[-75.18829,40.02958],[-75.18778,40.03078],[-75.18774,40.0328],[-75.18791,40.0334],[-75.18809,40.03416],[-75.18872,40.03542],[-75.18918,40.03579],[-75.19099,40.03736],[-75.19325,40.03482],[-75.19567,40.03392],[-75.19712,40.03339]]]},"properties":{"LISTNAME":"Blue Bell Hill"}}]};</script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<script>
+"use strict";
+/* ================================================================
+   PHYSICS MODEL
+   ================================================================ */
+const D2R = Math.PI/180, RHOCP = 1200, H_O = 17, FLOOR_H = 2.8;
+const DT = 60, SPIN_DAYS = 7, SHOW_DAYS = 3, N_DAYS = SPIN_DAYS + SHOW_DAYS;
+const STEPS = N_DAYS*86400/DT, REC = 10; // record every 10 steps (10 min)
+// PHL 1991–2020 normals (approx.), °C; mean daily GHI kWh/m²/day (approx., NSRDB-like)
+const CLIM = {
+  tmax:[5.6,7.2,12.2,18.3,23.9,28.9,31.7,30.6,26.7,20.0,13.9,7.8],
+  tmin:[-2.8,-1.7,2.2,7.2,12.8,18.3,21.7,20.6,16.7,10.0,4.4,-0.6],
+  ghi:[2.1,2.9,3.9,4.9,5.7,6.2,6.1,5.4,4.4,3.3,2.3,1.8]
+};
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MIDDOY = [17,47,75,105,135,162,198,228,258,288,318,344];
+// ASHRAE fraction of daily range below the max, for hours 1..24
+const PROF = [0.87,0.92,0.96,0.99,1.00,0.98,0.93,0.84,0.71,0.56,0.39,0.23,0.11,0.03,0.00,0.03,0.10,0.21,0.34,0.47,0.58,0.68,0.76,0.82];
+function profAt(h){ // h in 0..24 local standard time
+  const i = Math.floor(h), f = h - i;
+  const a = PROF[(i - 1 + 24) % 24], b = PROF[(i + 24) % 24];
+  return a + (b - a)*f;
+}
+function solarPos(doy, hLST, lat, lon){
+  const B = 2*Math.PI*(doy - 1)/365;
+  const decl = 0.006918-0.399912*Math.cos(B)+0.070257*Math.sin(B)-0.006758*Math.cos(2*B)+0.000907*Math.sin(2*B)-0.002697*Math.cos(3*B)+0.00148*Math.sin(3*B);
+  const eot = 229.18*(0.000075+0.001868*Math.cos(B)-0.032077*Math.sin(B)-0.014615*Math.cos(2*B)-0.040849*Math.sin(2*B));
+  const st = hLST + (4*(lon + 75) + eot)/60; // EST meridian -75°
+  const ha = (st - 12)*15*D2R, phi = lat*D2R;
+  const cosZ = Math.sin(phi)*Math.sin(decl) + Math.cos(phi)*Math.cos(decl)*Math.cos(ha);
+  const alt = Math.asin(Math.max(-1, Math.min(1, cosZ)));
+  let az = Math.atan2(Math.sin(ha), Math.cos(ha)*Math.sin(phi) - Math.tan(decl)*Math.cos(phi)) + Math.PI;
+  return {alt, az, cosZ, I0: 1367*(1 + 0.033*Math.cos(2*Math.PI*doy/365))};
+}
+const haurwitz = cz => cz > 0.01 ? 1098*cz*Math.exp(-0.057/cz) : 0;
+function erbs(kt){
+  if (kt <= 0.22) return 1 - 0.09*kt;
+  if (kt <= 0.8) return 0.9511 - 0.1604*kt + 4.388*kt*kt - 16.638*kt**3 + 12.336*kt**4;
+  return 0.165;
+}
+// façades in building-local frame: front +z, back -z, right +x, left -x (viewed from the street)
+const FACADES = [
+  {key:"front", name:"Front", n:[0,1]},
+  {key:"back",  name:"Back",  n:[0,-1]},
+  {key:"left",  name:"Left",  n:[-1,0]},
+  {key:"right", name:"Right", n:[1,0]}
+];
+function facadeAz(n, gammaDeg){ // world azimuth (deg from N, clockwise) of a local normal
+  const th = Math.PI - gammaDeg*D2R;
+  const wx = n[0]*Math.cos(th) + n[1]*Math.sin(th);
+  const wz = -n[0]*Math.sin(th) + n[1]*Math.cos(th);
+  return ((Math.atan2(wx, -wz)/D2R) + 360) % 360;
+}
+const compass = a => ["N","NE","E","SE","S","SW","W","NW"][Math.round(((a%360)+360)%360/45)%8];
+
+const TYPOLOGY = {
+  row:  {W:5,   D:12, party:["left","right"], roof:"flat",    hw:0.7,
+         win:{front:[2,3], back:[2,2], left:[0,0], right:[0,0]}},
+  twin: {W:6.5, D:10, party:["right"],        roof:"pitched", hw:0.35,
+         win:{front:[3,3], back:[2.5,2.5], left:[1.5,1.5], right:[0,0]}},
+  det:  {W:9,   D:9,  party:[],               roof:"pitched", hw:0,
+         win:{front:[4,4], back:[3.5,3.5], left:[2,2], right:[2,2]}}
+};
+const ERA = {
+  pre1940:{Uw:1.9,  Rroof:0.4,  Ug:4.8, shgc:0.75, ach:0.9,  cw:400e3, mass:"260000"},
+  mid:    {Uw:0.9,  Rroof:1.9,  Ug:3.0, shgc:0.65, ach:0.6,  cw:120e3, mass:"165000"},
+  code:   {Uw:0.32, Rroof:8.6,  Ug:1.7, shgc:0.40, ach:0.3,  cw:40e3,  mass:"165000"},
+  ph:     {Uw:0.15, Rroof:10.5, Ug:0.8, shgc:0.50, ach:0.1,  cw:60e3,  mass:"165000"}
+};
+const sched = h => { // internal-gain fraction by clock hour
+  if (h < 6) return 0.3; if (h < 9) return 0.7; if (h < 17) return 0.4; if (h < 23) return 1.0; return 0.5;
+};
+
+function buildForcing(p, lat, lon){
+  const m = p.month - 1, doy = MIDDOY[m], dst = (p.month >= 3 && p.month <= 10) ? 1 : 0;
+  // sky clearness factor calibrated to the monthly mean daily GHI
+  let clearDay = 0;
+  for (let h = 0; h < 24; h += 0.25) clearDay += haurwitz(solarPos(doy, h, lat, lon).cosZ)*0.25/1000;
+  const kcAvg = Math.min(1, CLIM.ghi[m]/clearDay);
+  const range = CLIM.tmax[m] - CLIM.tmin[m];
+  const dayOff = new Array(N_DAYS).fill(0), dayKc = new Array(N_DAYS).fill(p.sky === "clear" ? 1 : p.sky === "overcast" ? 0.3 : kcAvg);
+  if (p.scen !== "typical"){
+    const sgn = p.scen === "heatwave" ? 1 : -1;
+    [0.3, 0.7, 1, 1].forEach((f, i) => { dayOff[SPIN_DAYS - 1 + i] = sgn*p.dT*f; });
+    if (p.scen === "heatwave") for (let d = SPIN_DAYS; d < N_DAYS; d++) dayKc[d] = p.sky === "overcast" ? 0.3 : 0.95;
+  }
+  const g = TYPOLOGY[p.typ];
+  const fac = FACADES.map(f => ({...f, az: facadeAz(f.n, p.orient), party: g.party.includes(f.key), len: (f.key === "front" || f.key === "back") ? p.W : p.D}));
+  const Hb = 2*FLOOR_H, Wst = p.hw > 0.01 ? Hb/p.hw : 1e9;
+  const beta = p.roofT === "pitched" ? 30*D2R : 0;
+  const roofPlanes = p.roofT === "pitched" ? [facadeAz([0,1], p.orient), facadeAz([0,-1], p.orient)] : [0];
+  const IAC = 1 - 0.45*p.blinds;
+  const N = STEPS;
+  const F = {
+    To0: new Float32Array(N), night: new Float32Array(N), ghi: new Float32Array(N), alt: new Float32Array(N), az: new Float32Array(N),
+    Tg: 0, saW: [new Float32Array(N), new Float32Array(N)], saR: new Float32Array(N), Iroof: new Float32Array(N),
+    qsol: [new Float32Array(N), new Float32Array(N)], qsolFac: fac.map(() => [new Float32Array(N), new Float32Array(N)]),
+    Ifac: fac.map(() => new Float32Array(N)), fac, dst, doy, kcAvg, clockStart: dst
+  };
+  F.Tg = 13.5 + 5.5*Math.cos(2*Math.PI*(doy - 230)/365);
+  const winA = (f, k) => f.party ? 0 : Math.min(p.win[f.key][k], 0.8*f.len*FLOOR_H);
+  const opA = (f, k) => f.party ? 0 : f.len*FLOOR_H - winA(f, k);
+  for (let s = 0; s < N; s++){
+    const t = s*DT/3600, d = Math.floor(t/24), h = t - 24*d;
+    F.To0[s] = CLIM.tmax[m] + dayOff[d] - profAt(h)*range;
+    const sp = solarPos(doy, h, lat, lon);
+    F.alt[s] = sp.alt; F.az[s] = sp.az;
+    F.night[s] = Math.max(0, Math.min(1, 1 - Math.sin(sp.alt)/0.26));
+    const kc = dayKc[d];
+    const ghi = kc*haurwitz(sp.cosZ);
+    let dhi = ghi, dni = 0;
+    if (sp.cosZ > 0.05 && ghi > 0){
+      const kt = Math.min(1, ghi/(sp.I0*sp.cosZ));
+      dhi = erbs(kt)*ghi; dni = (ghi - dhi)/sp.cosZ;
+    }
+    F.ghi[s] = ghi;
+    const lw = 63*(0.3 + 0.7*Math.min(1, kc));
+    // roof
+    let Ir = 0;
+    for (const az of roofPlanes){
+      const cth = Math.cos(sp.alt > 0 ? Math.PI/2 - sp.alt : Math.PI/2)*Math.cos(beta) + Math.sin(Math.PI/2 - sp.alt)*Math.sin(beta)*Math.cos(sp.az - az*D2R);
+      Ir += (sp.alt > 0 ? dni*Math.max(0, cth) : 0) + dhi*(1 + Math.cos(beta))/2 + 0.2*ghi*(1 - Math.cos(beta))/2;
+    }
+    Ir /= roofPlanes.length;
+    F.Iroof[s] = Ir;
+    F.saR[s] = (p.aroof*Ir - lw*(1 + Math.cos(beta))/2)/H_O;
+    // façades
+    const sw = [0, 0], aw = [0, 0];
+    fac.forEach((f, fi) => {
+      const rel = sp.az - f.az*D2R;
+      const cth = sp.alt > 0 ? Math.cos(sp.alt)*Math.cos(rel) : 0;
+      const beam = dni*Math.max(0, cth);
+      const canyon = f.key === "front" && p.hw > 0.01;
+      F.Ifac[fi][s] = beam + 0.5*dhi + 0.1*ghi; // unobstructed (for display)
+      for (let k = 0; k < 2; k++){
+        let sunW = 1, sunO = 1, sky = 1;
+        if (canyon){
+          const zc = k*FLOOR_H + 1.65;
+          sky = 1 - Math.sin(Math.atan(Math.max(0, Hb - zc)/Wst));
+          if (cth > 0){
+            const tp = Math.tan(sp.alt)/Math.max(1e-3, Math.cos(rel));
+            const zsh = Hb - Wst*tp; // shadow line height on the wall
+            sunW = Math.max(0, Math.min(1, (k*FLOOR_H + 2.4 - zsh)/1.5));
+            sunO = Math.max(0, Math.min(1, ((k + 1)*FLOOR_H - zsh)/FLOOR_H));
+          }
+        }
+        const diff = 0.5*dhi*sky, grd = 0.1*ghi*sky;
+        const Ao = opA(f, k), Aw = winA(f, k);
+        if (Ao > 0){ sw[k] += Ao*p.awall*(beam*sunO + diff + grd); aw[k] += Ao; }
+        if (Aw > 0){
+          const iam = cth > 0.02 ? Math.max(0, 1 - 0.1*(1/cth - 1)) : 0;
+          const q = 0.85*Aw*p.shgc*IAC*(beam*iam*sunW + 0.9*(diff + grd));
+          F.qsolFac[fi][k][s] = q; F.qsol[k][s] += q;
+        }
+      }
+    });
+    for (let k = 0; k < 2; k++) F.saW[k][s] = aw[k] > 0 ? sw[k]/aw[k]/H_O : 0;
+  }
+  F.winA = winA; F.opA = opA;
+  return F;
+}
+
+function simulate(p, F, uhi, record = true){
+  const g = TYPOLOGY[p.typ];
+  const Af = p.W*p.D, V = Af*FLOOR_H;
+  const nParty = g.party.length;
+  const Ca = V*RHOCP*4; // air + furnishings
+  const Cm = Af*p.mass + nParty*p.D*FLOOR_H*157e3; // + inner half of brick party walls
+  const Kma = 9.1*3*Af;
+  const Kff = Af/0.25 + RHOCP*0.04;
+  const Kg = Af/(0.5 + 0.5);
+  const Aop = [0, 1].map(k => F.fac.reduce((a, f) => a + F.opA(f, k), 0));
+  const Awn = [0, 1].map(k => F.fac.reduce((a, f) => a + F.winA(f, k), 0));
+  const Kw = Aop.map(a => 2*p.Uw*a), Cw = Aop.map(a => Math.max(1, a*p.cw));
+  const Kwin = Awn.map(a => p.Ug*a);
+  const Kinf = RHOCP*p.ach*V/3600;
+  const ventFrac = Awn.map(a => Math.min(1, a/(0.06*Af)));
+  const KventMax = ventFrac.map(f => RHOCP*p.achV*V/3600*f);
+  const flat = p.roofT === "flat";
+  const beta = 30*D2R, Aroof = flat ? Af : Af/Math.cos(beta);
+  const Cr = Af*40e3, Kro = Af*H_O, Kri = Af/(p.Rroof + 0.27);
+  const rise = (p.D/2)*Math.tan(beta), Vat = p.W*p.D*rise/2;
+  const Crd = Aroof*15e3, Krdo = Aroof*H_O, Krda = Aroof*5, Cat = Vat*RHOCP*3;
+  const Katv = RHOCP*p.achAt*Vat/3600, Kceil = Af/(p.Rroof + 0.3);
+  const capK = p.cap*1000/2;
+  const T0 = (CLIM.tmax[p.month - 1] + CLIM.tmin[p.month - 1])/2 + 3;
+  let Ta = [T0, T0], Tm = [T0, T0], Tw = [T0, T0], Tr = T0, Trd = T0, Tat = T0;
+  const nRec = SHOW_DAYS*86400/DT/REC, recStart = SPIN_DAYS*86400/DT;
+  const R = record ? {t:[], To:[], T1:[], T2:[], Ttop:[], Troof:[], Tsr:[], hvac:[], ghi:[], Iroof:[], Ifac:F.fac.map(() => []), q1:[], q2:[], vent:[]} : null;
+  const lastDay = STEPS - 86400/DT;
+  const bal = {f1:{}, f2:{}};
+  const add = (o, k, v) => { o[k] = (o[k] || 0) + v*DT/3.6e6; };
+  let peak1 = -99, peak2 = -99, min2 = 99, h26 = 0, h30 = 0, coolE = 0, heatE = 0, peakRoof = -99, peakTo = -99;
+  const dayClock = F.dst;
+  for (let s = 0; s < STEPS; s++){
+    const To = F.To0[s] + uhi.day + (uhi.night - uhi.day)*F.night[s];
+    const tH = s*DT/3600, clock = (tH + dayClock) % 24;
+    const qint = p.qint*Af*sched(clock);
+    const sa = To + F.saR[s];
+    // ventilation decision per floor
+    const Kv = [0, 0];
+    for (let k = 0; k < 2; k++){
+      let open = false;
+      if (p.vent === "night") open = (clock >= 21 || clock < 7) && Ta[k] > 21 && To < Ta[k];
+      else if (p.vent === "cooler") open = To < Ta[k] - 1 && Ta[k] > 22;
+      if (open && p.hvac !== "off" && Ta[k] > p.Tc - 0.5 && To > p.Tc - 3) open = false;
+      Kv[k] = Kinf + (open ? KventMax[k] : 0);
+    }
+    const topFlux = flat ? Kri*(Tr - Ta[1]) : Kceil*(Tat - Ta[1]);
+    const qff = Kff*(Ta[1] - Ta[0]);
+    const nTa = [0, 0], hv = [0, 0];
+    for (let k = 0; k < 2; k++){
+      const qW = Kw[k]*(Tw[k] - Ta[k]);
+      const qM = Kma*(Tm[k] - Ta[k]);
+      const qWin = Kwin[k]*(To - Ta[k]);
+      const qInf = Kv[k]*(To - Ta[k]);
+      const qFF = k === 0 ? qff : -qff;
+      const qG = k === 0 ? Kg*(F.Tg - Ta[0]) : 0;
+      const qTop = k === 1 ? topFlux : 0;
+      const qs = F.qsol[k][s];
+      const sum = qW + qM + qWin + qInf + qFF + qG + qTop + 0.3*qs + 0.6*qint/2;
+      let T = Ta[k] + DT/Ca*sum;
+      if (p.hvac !== "off" && T > p.Tc){ const q = -Math.min(capK, Ca*(T - p.Tc)/DT); hv[k] = q; T += q*DT/Ca; }
+      if (p.hvac === "both" && T < p.Th){ const q = Math.min(8000, Ca*(p.Th - T)/DT); hv[k] = q; T += q*DT/Ca; }
+      nTa[k] = T;
+      Tm[k] += DT/Cm*(-qM + 0.7*qs + 0.4*qint/2);
+      Tw[k] += DT/Cw[k]*(Kw[k]*(To + F.saW[k][s] - Tw[k]) - qW);
+      if (s >= lastDay){
+        const o = k === 0 ? bal.f1 : bal.f2;
+        F.fac.forEach((f, fi) => add(o, "Solar · " + f.name, F.qsolFac[fi][k][s]));
+        add(o, "Internal gains", qint/2);
+        add(o, "Walls", qW); add(o, "Window conduction", qWin); add(o, "Infiltration & ventilation", qInf);
+        add(o, "Ground / basement", qG); add(o, flat ? "Roof" : "Ceiling / attic", qTop);
+        add(o, "Between floors", qFF); add(o, "HVAC", hv[k]);
+      }
+    }
+    if (flat){
+      Tr += DT/Cr*(Kro*(sa - Tr) - Kri*(Tr - Ta[1]));
+    } else {
+      const qda = Krda*(Trd - Tat);
+      Trd += DT/Crd*(Krdo*(sa - Trd) - qda);
+      Tat += DT/Cat*(qda + Katv*(To - Tat) - Kceil*(Tat - Ta[1]));
+    }
+    Ta = nTa;
+    if (s >= recStart){
+      peak1 = Math.max(peak1, Ta[0]); peak2 = Math.max(peak2, Ta[1]); min2 = Math.min(min2, Ta[1]);
+      if (Ta[1] >= 26) h26 += DT/3600; if (Ta[1] >= 30) h30 += DT/3600;
+      coolE += -Math.min(0, hv[0] + hv[1])*DT/3.6e6; heatE += Math.max(0, hv[0]) * DT/3.6e6 + Math.max(0, hv[1])*DT/3.6e6;
+      const roofT = flat ? Tr : Trd;
+      peakRoof = Math.max(peakRoof, roofT); peakTo = Math.max(peakTo, To);
+      if (record && (s - recStart) % REC === 0){
+        R.t.push((s - recStart)*DT/3600); R.To.push(To); R.T1.push(Ta[0]); R.T2.push(Ta[1]);
+        R.Ttop.push(flat ? null : Tat); R.Troof.push(roofT); R.Tsr.push(sa);
+        R.hvac.push((hv[0] + hv[1])/1000); R.ghi.push(F.ghi[s]); R.Iroof.push(F.Iroof[s]);
+        F.fac.forEach((f, fi) => R.Ifac[fi].push(f.party ? null : F.Ifac[fi][s]));
+        R.q1.push(F.qsol[0][s]); R.q2.push(F.qsol[1][s]); R.vent.push(Kv[1] > Kinf + 1);
+        R.Tw = R.Tw || [[], []]; R.Tw[0].push(Tw[0]); R.Tw[1].push(Tw[1]);
+        R.alt = R.alt || []; R.az = R.az || []; R.alt.push(F.alt[s]); R.az.push(F.az[s]);
+        R.qf = R.qf || F.fac.map(() => [[], []]);
+        F.fac.forEach((f, fi) => { R.qf[fi][0].push(F.qsolFac[fi][0][s]); R.qf[fi][1].push(F.qsolFac[fi][1][s]); });
+      }
+    }
+  }
+  const house = {};
+  for (const o of [bal.f1, bal.f2]) for (const k in o) if (k !== "Between floors") house[k] = (house[k] || 0) + o[k];
+  return {R, bal:{house, f1:bal.f1, f2:bal.f2}, kpi:{peak1, peak2, min2, h26, h30, cool:coolE/SHOW_DAYS, heat:heatE/SHOW_DAYS, peakRoof, peakTo}};
+}
+
+/* ================================================================
+   NEIGHBORHOODS + UHI PROXY
+   ================================================================ */
+const CITY_HALL = [-75.1636, 39.9526];
+function ringArea(r){ let a = 0; for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] + r[i][0])*(r[j][1] - r[i][1]); return a/2; }
+function ringCentroid(r){
+  let a = 0, cx = 0, cy = 0;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++){
+    const f = r[j][0]*r[i][1] - r[i][0]*r[j][1]; a += f; cx += (r[j][0] + r[i][0])*f; cy += (r[j][1] + r[i][1])*f;
+  }
+  return [cx/(3*a), cy/(3*a)];
+}
+const km = (a, b) => { const dx = (a[0] - b[0])*85.0, dy = (a[1] - b[1])*111.0; return Math.hypot(dx, dy); };
+const hoods = NB.features.map((f, i) => {
+  const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+  let best = polys[0], ba = 0;
+  polys.forEach(pl => { const a = Math.abs(ringArea(pl[0])); if (a > ba){ ba = a; best = pl; } });
+  const c = ringCentroid(best[0]);
+  const d = km(c, CITY_HALL);
+  return {i, name: f.properties.LISTNAME, polys, c, d,
+    uhi: {day: +(0.3 + 1.0*Math.exp(-d/7)).toFixed(2), night: +(0.8 + 2.7*Math.exp(-d/7)).toFixed(2)}, src: "proxy"};
+}).sort((a, b) => a.name.localeCompare(b.name));
+
+/* ================================================================
+   UI STATE
+   ================================================================ */
+const $ = id => document.getElementById(id);
+let unitF = false;
+const cv = c => unitF ? c*9/5 + 32 : c;
+const fT = (c, d = 1) => (c == null || !isFinite(c)) ? "–" : cv(c).toFixed(d) + (unitF ? " °F" : " °C");
+const fdT = (c, d = 1) => (unitF ? (c*9/5).toFixed(d) + " °F" : c.toFixed(d) + " °C");
+const state = {
+  site: hoods.find(h => h.name === "Hunting Park") || hoods[0],
+  p: {month:7, scen:"heatwave", dT:5, sky:"avg", typ:"row", era:"pre1940", orient:180, W:5, D:12, hw:0.7, mass:260000,
+      roofT:"flat", Rroof:0.4, aroof:0.9, achAt:3, Uw:1.9, Ug:4.8, shgc:0.75, blinds:0, ach:0.9, vent:"cooler", achV:4,
+      qint:6, hvac:"off", Tc:26, Th:20, cap:3.5, awall:0.7, cw:400e3,
+      win:JSON.parse(JSON.stringify(TYPOLOGY.row.win))},
+  uhi: {day:1, night:2}, res:null, F:null, pins:[], tIdx:228
+};
+state.uhi = {...state.site.uhi};
+
+const sliders = {
+  month:[v => MONTHS[v - 1]], dT:[v => "±" + fdT(+v)], uhiN:[v => "+" + fdT(+v)], uhiD:[v => "+" + fdT(+v)],
+  orient:[v => v + "° " + compass(+v)], W:[v => (+v).toFixed(1) + " m"], D:[v => (+v).toFixed(1) + " m"], hw:[v => (+v).toFixed(2)],
+  Rroof:[v => "R " + (+v).toFixed(1) + " m²K/W · R-" + Math.round(v*5.678)], aroof:[v => (+v).toFixed(2)], achAt:[v => (+v).toFixed(1) + " ACH"],
+  Uw:[v => (+v).toFixed(2) + " W/m²K"], Ug:[v => (+v).toFixed(1) + " W/m²K"], shgc:[v => (+v).toFixed(2)], blinds:[v => Math.round(v*100) + "%"],
+  ach:[v => (+v).toFixed(2) + " ACH"], achV:[v => (+v).toFixed(1) + " ACH"], qint:[v => (+v).toFixed(1) + " W/m²"],
+  Tc:[v => fT(+v)], Th:[v => fT(+v)], cap:[v => (+v).toFixed(1) + " kW"]
+};
+const keyMap = {uhiN:"night", uhiD:"day"};
+function syncUI(){
+  const p = state.p;
+  for (const id in sliders){
+    const el = $(id);
+    if (id in keyMap) el.value = state.uhi[keyMap[id]]; else el.value = p[id];
+    const o = $(id + "O"); if (o) o.textContent = sliders[id][0](el.value);
+  }
+  ["scen","sky","typ","era","roofT","vent","hvac"].forEach(id => $(id).value = p[id]);
+  $("mass").value = String(p.mass);
+  $("site").value = state.site.name;
+  $("siteLL").textContent = state.site.c[1].toFixed(3) + "°N " + Math.abs(state.site.c[0]).toFixed(3) + "°W";
+  $("attRow").style.display = p.roofT === "pitched" ? "" : "none";
+  $("dT").disabled = p.scen === "typical";
+  ["Tc","cap"].forEach(id => $(id).disabled = p.hvac === "off");
+  $("Th").disabled = p.hvac !== "both";
+  buildWinTable();
+}
+function buildWinTable(){
+  const p = state.p, g = TYPOLOGY[p.typ], tb = $("wint").querySelector("tbody");
+  tb.innerHTML = "";
+  FACADES.forEach(f => {
+    const party = g.party.includes(f.key), az = facadeAz(f.n, p.orient);
+    const tr = document.createElement("tr"); if (party) tr.className = "party";
+    tr.innerHTML = `<td>${f.name}${party ? " (party)" : ""}</td><td class="mono">${compass(az)} ${Math.round(az)}°</td>` +
+      [0, 1].map(k => `<td><input type="number" id="w_${f.key}_${k}" min="0" max="20" step="0.5" value="${party ? 0 : p.win[f.key][k]}" ${party ? "disabled" : ""} aria-label="${f.name} floor ${k + 1} window area"></td>`).join("");
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll("input").forEach(inp => inp.addEventListener("change", () => {
+    const [, key, k] = inp.id.split("_"); p.win[key][+k] = Math.max(0, +inp.value || 0); run();
+  }));
+}
+function applyTypology(t){
+  const g = TYPOLOGY[t], p = state.p;
+  Object.assign(p, {typ:t, W:g.W, D:g.D, roofT:g.roof, hw:g.hw, win:JSON.parse(JSON.stringify(g.win))});
+}
+function applyEra(e){
+  const x = ERA[e], p = state.p;
+  Object.assign(p, {era:e, Uw:x.Uw, Rroof:x.Rroof, Ug:x.Ug, shgc:x.shgc, ach:x.ach, cw:x.cw, mass:+x.mass});
+}
+
+/* ================================================================
+   RUN
+   ================================================================ */
+let mapTimer = null;
+function run(skipMap){
+  const p = state.p;
+  state.F = buildForcing(p, state.site.c[1], state.site.c[0]);
+  state.res = simulate(p, state.F, state.uhi, true);
+  renderKPIs(); renderCharts(); renderCmp(); update3D(true); setTime(state.tIdx);
+  if (!skipMap){ clearTimeout(mapTimer); mapTimer = setTimeout(runMap, 250); }
+}
+function runMap(){
+  const p = state.p;
+  const F = buildForcing(p, 39.99, -75.13);
+  hoods.forEach(h => { const r = simulate(p, F, h.uhi, false); h.kpi = r.kpi; });
+  drawMapColors();
+}
+
+/* ================================================================
+   KPIs
+   ================================================================ */
+function renderKPIs(){
+  const k = state.res.kpi, p = state.p;
+  const cls = (v, a, b) => v >= b ? "bad" : v >= a ? "warn" : "ok";
+  const tiles = [
+    {lab:"Peak upstairs", val:fT(k.peak2), sub:"Floor 2 air, 3 shown days", c:cls(k.peak2, 26, 30)},
+    {lab:"Peak downstairs", val:fT(k.peak1), sub:"Floor 1 air", c:cls(k.peak1, 26, 30)},
+    {lab:"Peak outdoor air", val:fT(k.peakTo), sub:`incl. UHI +${fdT(state.uhi.day)} day`, c:""},
+    {lab:"Hours ≥ 26 °C upstairs", val:k.h26.toFixed(1) + " h", sub:"of 72 h", c:cls(k.h26, 6, 24)},
+    {lab:"Hours ≥ 30 °C upstairs", val:k.h30.toFixed(1) + " h", sub:"of 72 h", c:cls(k.h30, 0.1, 8)},
+    {lab:p.roofT === "flat" ? "Peak roof deck" : "Peak roof deck (attic)", val:fT(k.peakRoof), sub:"surface node", c:cls(k.peakRoof, 45, 60)},
+    {lab:p.hvac === "both" && k.heat > k.cool ? "Heating energy" : "Cooling energy", val:(p.hvac === "both" && k.heat > k.cool ? k.heat : k.cool).toFixed(1) + " kWh/d", sub:p.hvac === "off" ? "HVAC off" : "thermal, per day", c:""},
+    {lab:"Min upstairs", val:fT(k.min2), sub:"cold-risk check", c:k.min2 < 16 ? "bad" : k.min2 < 18 ? "warn" : "ok"}
+  ];
+  $("kpis").innerHTML = tiles.map(t => `<div class="kpi ${t.c}"><div class="lab">${t.lab}</div><div class="val">${t.val}</div><div class="sub">${t.sub}</div></div>`).join("");
+}
+
+/* ================================================================
+   CHARTS
+   ================================================================ */
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+let cT, cB, cS;
+const PIN_COLORS = ["#7b5cc4", "#2f8f4e", "#b8860b", "#c2417a"];
+const clockLabel = (t) => { const tt = t + state.F.dst; const d = Math.floor(tt/24) + 1, h = Math.floor(tt % 24), mm = Math.round((tt % 1)*60) % 60; return `Day ${d} ${String(h).padStart(2,"0")}:${String(mm).padStart(2,"0")}`; };
+const cursorPlugin = {
+  id:"cursor",
+  afterDatasetsDraw(ch){
+    const x = ch.scales.x; if (!x || state.res == null) return;
+    const t = state.res.R.t[state.tIdx]; const px = x.getPixelForValue(t);
+    const c = ch.ctx; c.save(); c.strokeStyle = css("--ink"); c.globalAlpha = .5; c.setLineDash([4, 3]);
+    c.beginPath(); c.moveTo(px, ch.chartArea.top); c.lineTo(px, ch.chartArea.bottom); c.stroke(); c.restore();
+  }
+};
+function baseOpts(yTitle){
+  const ink = css("--muted"), grid = css("--line");
+  return {
+    animation:false, responsive:true, maintainAspectRatio:false, parsing:false, normalized:true,
+    interaction:{mode:"nearest", axis:"x", intersect:false},
+    plugins:{legend:{labels:{color:ink, boxWidth:14, boxHeight:3, font:{family:"IBM Plex Sans", size:11}}},
+      tooltip:{callbacks:{title:items => clockLabel(items[0].parsed.x)}}},
+    scales:{
+      x:{type:"linear", min:0, max:72, grid:{color:grid}, ticks:{color:ink, stepSize:6, callback:v => { const h = (v + state.F.dst) % 24; return h === 0 ? "Day " + (Math.floor((v + state.F.dst)/24) + 1) : String(h).padStart(2,"0") + ":00"; }, font:{family:"IBM Plex Mono", size:10}}},
+      y:{grid:{color:grid}, ticks:{color:ink, font:{family:"IBM Plex Mono", size:10}}, title:{display:true, text:yTitle, color:ink}}
+    }
+  };
+}
+const xy = (t, arr, f = cv) => t.map((x, i) => ({x, y: arr[i] == null ? null : f(arr[i])}));
+function renderCharts(){
+  if (typeof Chart === "undefined") return;
+  const R = state.res.R, u = unitF ? "°F" : "°C";
+  const ds = [
+    {label:"Outdoor air", data:xy(R.t, R.To), borderColor:"#7d8a86", borderWidth:1.5},
+    {label:"Roof sol-air", data:xy(R.t, R.Tsr), borderColor:"#e0a458", borderWidth:1, borderDash:[2, 2], hidden:true},
+    {label:state.p.roofT === "flat" ? "Roof deck" : "Attic air", data:xy(R.t, state.p.roofT === "flat" ? R.Troof : R.Ttop), borderColor:"#d98b2b", borderWidth:1.5},
+    {label:"Floor 1 air", data:xy(R.t, R.T1), borderColor:css("--cool"), borderWidth:2},
+    {label:"Floor 2 air", data:xy(R.t, R.T2), borderColor:css("--hot"), borderWidth:2.5}
+  ];
+  state.pins.forEach((pn, i) => ds.push({label:"Pinned: " + pn.label + " · F2", data:xy(pn.t, pn.T2), borderColor:PIN_COLORS[i % 4], borderWidth:1.6, borderDash:[6, 4]}));
+  ds.forEach(d => { d.pointRadius = 0; d.tension = 0; d.spanGaps = true; });
+  if (!cT){ cT = new Chart($("cT"), {type:"line", data:{datasets:ds}, options:baseOpts(u), plugins:[cursorPlugin]}); }
+  else { cT.data.datasets = ds; cT.options.scales.y.title.text = u; cT.update(); }
+  // balance
+  const scope = $("balScope").value, b = state.res.bal[scope];
+  const ents = Object.entries(b).filter(([k, v]) => Math.abs(v) > 0.005 && !(scope === "house" && k === "Between floors"));
+  ents.sort((a, c) => c[1] - a[1]);
+  const bdata = {labels:ents.map(e => e[0]), datasets:[{data:ents.map(e => +e[1].toFixed(2)), backgroundColor:ents.map(e => e[1] >= 0 ? css("--hot") : css("--cool")), borderRadius:3}]};
+  const bopt = {animation:false, responsive:true, maintainAspectRatio:false, indexAxis:"y",
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:c => (c.parsed.x >= 0 ? "gain " : "loss ") + Math.abs(c.parsed.x).toFixed(2) + " kWh"}}},
+    scales:{x:{grid:{color:css("--line")}, ticks:{color:css("--muted"), font:{family:"IBM Plex Mono", size:10}}, title:{display:true, text:"kWh over the last day  (← loss · gain →)", color:css("--muted")}},
+            y:{grid:{display:false}, ticks:{color:css("--ink"), font:{family:"IBM Plex Sans", size:11}}}}};
+  if (!cB) cB = new Chart($("cB"), {type:"bar", data:bdata, options:bopt}); else { cB.data = bdata; cB.update(); }
+  // solar
+  const facCol = ["#c8431c", "#3b6fb6", "#2f8f4e", "#7b5cc4"];
+  const sds = [{label:"Roof (" + (state.p.roofT === "flat" ? "horizontal" : "30° planes avg") + ")", data:xy(R.t, R.Iroof, v => v), borderColor:"#d98b2b", borderWidth:2}];
+  state.F.fac.forEach((f, fi) => { if (!f.party) sds.push({label:`${f.name} (${compass(f.az)})`, data:xy(R.t, R.Ifac[fi], v => v), borderColor:facCol[fi], borderWidth:1.5}); });
+  sds.forEach(d => { d.pointRadius = 0; d.spanGaps = true; });
+  const so = baseOpts("W/m²"); so.scales.y.min = 0;
+  if (!cS) cS = new Chart($("cS"), {type:"line", data:{datasets:sds}, options:so, plugins:[cursorPlugin]}); else { cS.data.datasets = sds; cS.update(); }
+}
+function restyleCharts(){ [cT, cB, cS].forEach(c => c && c.destroy()); cT = cB = cS = null; renderCharts(); }
+
+/* ================================================================
+   SCENARIO PINS
+   ================================================================ */
+function scenarioLabel(){
+  const p = state.p;
+  return `${{row:"Row", twin:"Twin", det:"Detached"}[p.typ]} ${compass(p.orient)}, R${p.Rroof.toFixed(1)}, α${p.aroof.toFixed(2)}, ${MONTHS[p.month - 1]}`;
+}
+function renderCmp(){
+  const cur = {label:"Current", kpi:state.res.kpi, color:css("--hot")};
+  const rows = [cur, ...state.pins.map((p, i) => ({label:p.label, kpi:p.kpi, color:PIN_COLORS[i % 4]}))];
+  $("cmp").innerHTML = `<thead><tr><th>Scenario</th><th>Peak F2</th><th>Peak F1</th><th>h ≥ 26</th><th>h ≥ 30</th><th>Roof peak</th><th>Cool kWh/d</th></tr></thead><tbody>` +
+    rows.map(r => `<tr><td><span class="swatch" style="background:${r.color}"></span>${r.label}</td><td class="mono">${fT(r.kpi.peak2)}</td><td class="mono">${fT(r.kpi.peak1)}</td><td class="mono">${r.kpi.h26.toFixed(1)}</td><td class="mono">${r.kpi.h30.toFixed(1)}</td><td class="mono">${fT(r.kpi.peakRoof, 0)}</td><td class="mono">${r.kpi.cool.toFixed(1)}</td></tr>`).join("") + "</tbody>";
+}
+
+/* ================================================================
+   MAP
+   ================================================================ */
+const svgNS = "http://www.w3.org/2000/svg";
+let proj, mapPaths = new Map(), glyph;
+function setupMap(){
+  const svg = $("map");
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  const k = Math.cos(40*D2R);
+  hoods.forEach(h => h.polys.forEach(pl => pl[0].forEach(([lo, la]) => { x0 = Math.min(x0, lo*k); x1 = Math.max(x1, lo*k); y0 = Math.min(y0, -la); y1 = Math.max(y1, -la); })));
+  const Wv = 1000, s = Wv/(x1 - x0), Hv = (y1 - y0)*s;
+  svg.setAttribute("viewBox", `-10 -10 ${Wv + 20} ${Hv + 20}`);
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  proj = (lo, la) => [(lo*k - x0)*s, (-la - y0)*s];
+  hoods.forEach(h => {
+    const d = h.polys.map(pl => pl.map(r => "M" + r.map(([lo, la]) => proj(lo, la).map(v => v.toFixed(1)).join(",")).join("L") + "Z").join("")).join("");
+    const path = document.createElementNS(svgNS, "path");
+    path.setAttribute("d", d); path.setAttribute("fill", "#ccc");
+    path.addEventListener("click", () => selectSite(h));
+    path.addEventListener("mousemove", ev => showTip(ev, h));
+    path.addEventListener("mouseleave", () => $("tip").style.display = "none");
+    svg.appendChild(path); mapPaths.set(h.name, path);
+  });
+  // City Hall marker + building glyph
+  const ch = proj(...CITY_HALL);
+  const m = document.createElementNS(svgNS, "g");
+  m.innerHTML = `<circle cx="${ch[0]}" cy="${ch[1]}" r="6" fill="none" stroke="currentColor" stroke-width="2"/><text x="${ch[0] + 10}" y="${ch[1] + 7}" font-size="20" fill="currentColor" font-family="IBM Plex Sans">City Hall</text>`;
+  m.style.color = "var(--ink)"; m.style.pointerEvents = "none";
+  svg.appendChild(m);
+  glyph = document.createElementNS(svgNS, "g"); glyph.style.pointerEvents = "none"; svg.appendChild(glyph);
+  // north arrow
+  const na = document.createElementNS(svgNS, "g");
+  na.innerHTML = `<path d="M28 80 L40 40 L52 80 L40 70 Z" fill="currentColor"/><text x="40" y="32" text-anchor="middle" font-size="26" font-weight="700" fill="currentColor" font-family="Archivo">N</text>`;
+  na.style.color = "var(--ink)"; svg.appendChild(na);
+}
+const RAMP = ["#2c5d9e", "#5b8fc4", "#a9cbe0", "#f3e3b3", "#f2a65e", "#d9562b", "#9e1f1a"];
+function rampColor(t){
+  t = Math.max(0, Math.min(1, t)) * (RAMP.length - 1);
+  const i = Math.min(RAMP.length - 2, Math.floor(t)), f = t - i;
+  const a = RAMP[i].match(/\w\w/g).map(h => parseInt(h, 16)), b = RAMP[i + 1].match(/\w\w/g).map(h => parseInt(h, 16));
+  return `rgb(${a.map((v, j) => Math.round(v + (b[j] - v)*f)).join(",")})`;
+}
+function metricVal(h){
+  const m = $("metric").value, k = h.kpi; if (!k) return null;
+  return m === "peak2" ? cv(k.peak2) : m === "h26" ? k.h26 : m === "h30" ? k.h30 : k.cool;
+}
+function metricFmt(v){
+  const m = $("metric").value;
+  return m === "peak2" ? v.toFixed(1) + (unitF ? " °F" : " °C") : m === "cool" ? v.toFixed(1) + " kWh/d" : v.toFixed(1) + " h";
+}
+function drawMapColors(){
+  const vals = hoods.map(metricVal).filter(v => v != null);
+  let lo = Math.min(...vals), hi = Math.max(...vals); if (hi - lo < 0.1){ hi = lo + 0.1; }
+  hoods.forEach(h => { const v = metricVal(h); mapPaths.get(h.name).setAttribute("fill", v == null ? "#ccc" : rampColor((v - lo)/(hi - lo))); });
+  $("lgMin").textContent = metricFmt(lo); $("lgMax").textContent = metricFmt(hi);
+  $("lgBar").style.background = `linear-gradient(90deg,${RAMP.join(",")})`;
+}
+function drawGlyph(){
+  const h = state.site, [x, y] = proj(...h.c), p = state.p;
+  const sc = 3, w = p.W*sc, d = p.D*sc;
+  glyph.innerHTML = `<g transform="translate(${x},${y}) rotate(${p.orient - 180})">
+     <rect x="${-w/2}" y="${-d/2}" width="${w}" height="${d}" fill="var(--panel)" stroke="var(--ink)" stroke-width="2"/>
+     <path d="M0 ${d/2 + 2} L0 ${d/2 + 16} M-5 ${d/2 + 10} L0 ${d/2 + 17} L5 ${d/2 + 10}" stroke="var(--ink)" stroke-width="2.2" fill="none"/></g>
+     <text x="${x + 18}" y="${y - 16}" font-size="26" font-weight="700" fill="var(--ink)" stroke="var(--panel)" stroke-width="5" paint-order="stroke" font-family="Archivo">${h.name}</text>`;
+  mapPaths.forEach((pth, n) => pth.classList.toggle("sel", n === h.name));
+}
+function showTip(ev, h){
+  const tip = $("tip"), wrap = $("mapwrap").getBoundingClientRect();
+  const v = metricVal(h);
+  tip.innerHTML = `<b>${h.name}</b><br>UHI day +${fdT(h.uhi.day)} · night +${fdT(h.uhi.night)} <span style="opacity:.7">(${h.src})</span><br>${v == null ? "" : $("metric").selectedOptions[0].text + ": <b class='mono'>" + metricFmt(v) + "</b>"}`;
+  tip.style.display = "block";
+  let lx = ev.clientX - wrap.left + 12, ly = ev.clientY - wrap.top + 12;
+  if (lx + tip.offsetWidth > wrap.width) lx -= tip.offsetWidth + 24;
+  tip.style.left = lx + "px"; tip.style.top = ly + "px";
+}
+function selectSite(h){
+  state.site = h; state.uhi = {...h.uhi};
+  syncUI(); drawGlyph(); run(true);
+}
+
+/* ================================================================
+   3D TWIN (three.js)
+   ================================================================ */
+let R3 = null;
+function heatColor(T, lo, hi){ return new THREE.Color(rampColor((T - lo)/(hi - lo))); }
+function setup3D(){
+  if (typeof THREE === "undefined"){ $("ov").innerHTML = "<span class='err'>3D library failed to load.</span>"; return; }
+  const host = $("twin");
+  const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  host.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 600);
+  camera.position.set(26, 22, 30);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 3, 0); controls.maxPolarAngle = Math.PI*0.49; controls.enableDamping = true;
+  scene.add(new THREE.HemisphereLight(0xdfeaf2, 0x6d6a5e, 0.55));
+  const sun = new THREE.DirectionalLight(0xfff1d6, 1.0);
+  sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, {left:-40, right:40, top:40, bottom:-40, near:1, far:200});
+  scene.add(sun); scene.add(sun.target);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(160, 160), new THREE.MeshLambertMaterial({color:0x7f8f74}));
+  ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+  // north arrow on the ground (world -z is north)
+  const arrow = new THREE.Mesh(new THREE.ConeGeometry(1.1, 3.2, 3), new THREE.MeshLambertMaterial({color:0x22302d}));
+  arrow.rotation.x = -Math.PI/2; arrow.position.set(-22, 0.1, -20); scene.add(arrow);
+  const cnv = document.createElement("canvas"); cnv.width = cnv.height = 64;
+  const cx = cnv.getContext("2d"); cx.fillStyle = "#22302d"; cx.font = "bold 46px Archivo, sans-serif"; cx.textAlign = "center"; cx.fillText("N", 32, 48);
+  const lbl = new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cnv)})); lbl.scale.set(3, 3, 1); lbl.position.set(-22, 2, -24); scene.add(lbl);
+  const sunBall = new THREE.Mesh(new THREE.SphereGeometry(1.6, 20, 12), new THREE.MeshBasicMaterial({color:0xffc94a}));
+  scene.add(sunBall);
+  const site = new THREE.Group(); scene.add(site);
+  let pathLine = null;
+  R3 = {renderer, scene, camera, controls, sun, sunBall, site, host, pathLine, objs:null};
+  const resize = () => { const w = host.clientWidth, h = host.clientHeight; renderer.setSize(w, h); camera.aspect = w/h; camera.updateProjectionMatrix(); };
+  new ResizeObserver(resize).observe(host); resize();
+  const loop = () => { controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); };
+  loop();
+}
+function disposeGroup(g){ while (g.children.length){ const c = g.children.pop(); c.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); } }
+function update3D(rebuild){
+  if (!R3) return;
+  const p = state.p, g = TYPOLOGY[p.typ], H = FLOOR_H;
+  if (rebuild){
+    disposeGroup(R3.site);
+    const bld = new THREE.Group(); bld.rotation.y = Math.PI - p.orient*D2R; R3.site.add(bld);
+    const brick = 0xa4543a, wallMat = () => new THREE.MeshLambertMaterial({color:brick, transparent:true, opacity:1});
+    const objs = {floors:[], walls:[], wins:[], roof:null, slabs:[]};
+    for (let k = 0; k < 2; k++){
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(p.W, H, p.D), wallMat());
+      wall.position.y = k*H + H/2; wall.castShadow = true; wall.receiveShadow = true; bld.add(wall); objs.walls.push(wall);
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(p.W*0.92, H*0.86, p.D*0.94), new THREE.MeshLambertMaterial({color:0xffffff, transparent:true, opacity:0.85}));
+      slab.position.y = k*H + H/2; slab.visible = false; bld.add(slab); objs.slabs.push(slab);
+    }
+    // roof
+    if (p.roofT === "flat"){
+      const r = new THREE.Mesh(new THREE.BoxGeometry(p.W + 0.1, 0.25, p.D + 0.1), new THREE.MeshLambertMaterial({color:0x333333}));
+      r.position.y = 2*H + 0.12; r.castShadow = true; bld.add(r); objs.roof = r;
+    } else {
+      const rise = (p.D/2)*Math.tan(30*D2R);
+      const sh = new THREE.Shape(); sh.moveTo(-p.D/2 - 0.3, 0); sh.lineTo(0, rise); sh.lineTo(p.D/2 + 0.3, 0); sh.lineTo(-p.D/2 - 0.3, 0);
+      const geo = new THREE.ExtrudeGeometry(sh, {depth:p.W + 0.2, bevelEnabled:false});
+      const r = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({color:0x4a4a4a}));
+      r.rotation.y = -Math.PI/2; r.position.set(p.W/2 + 0.1, 2*H, 0); r.castShadow = true; bld.add(r); objs.roof = r;
+    }
+    // windows
+    state.F.fac.forEach((f, fi) => {
+      if (f.party) return;
+      for (let k = 0; k < 2; k++){
+        const A = state.F.winA(f, k); if (A <= 0) continue;
+        const hgt = 1.5, totalW = Math.min(A/hgt, f.len*0.85), n = Math.max(1, Math.ceil(totalW/1.3)), ww = totalW/n;
+        for (let j = 0; j < n; j++){
+          const u = -f.len/2 + (f.len/(n)) * (j + 0.5);
+          const m = new THREE.Mesh(new THREE.BoxGeometry(ww, hgt, 0.08), new THREE.MeshLambertMaterial({color:0x6f8fa6, emissive:0x000000}));
+          const y = k*H + 0.9 + hgt/2;
+          if (f.key === "front") m.position.set(u, y, p.D/2 + 0.03);
+          if (f.key === "back") m.position.set(-u, y, -p.D/2 - 0.03);
+          if (f.key === "right"){ m.position.set(p.W/2 + 0.03, y, u); m.rotation.y = Math.PI/2; }
+          if (f.key === "left"){ m.position.set(-p.W/2 - 0.03, y, -u); m.rotation.y = Math.PI/2; }
+          bld.add(m); objs.wins.push({m, fi, k, A:A/n});
+        }
+      }
+    });
+    // context: party-wall neighbors, street and opposite row
+    const nbMat = new THREE.MeshLambertMaterial({color:0x8f6f60});
+    const addBox = (w, h, d, x, y, z, mat) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat || nbMat); b.position.set(x, y, z); b.castShadow = true; b.receiveShadow = true; bld.add(b); return b; };
+    if (g.party.includes("right")) for (let i = 1; i <= (p.typ === "row" ? 4 : 1); i++) addBox(p.W, 2*H, p.D, i*p.W, H, 0);
+    if (g.party.includes("left")) for (let i = 1; i <= 4; i++) addBox(p.W, 2*H, p.D, -i*p.W, H, 0);
+    if (p.hw > 0.01){
+      const Wst = 2*H/p.hw, L = p.typ === "row" ? 9*p.W : 40;
+      const street = new THREE.Mesh(new THREE.PlaneGeometry(L + 10, Wst), new THREE.MeshLambertMaterial({color:0x55595a}));
+      street.rotation.x = -Math.PI/2; street.position.set(0, 0.02, p.D/2 + Wst/2); street.receiveShadow = true; bld.add(street);
+      const opp = addBox(L, 2*H, 6, 0, H, p.D/2 + Wst + 3, new THREE.MeshLambertMaterial({color:0xc4bdb0, transparent:true, opacity:0.2, depthWrite:false})); opp.castShadow = true;
+    }
+    // front arrow on the ground
+    const fa = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.6, 3), new THREE.MeshLambertMaterial({color:0x0e6b70}));
+    fa.rotation.x = Math.PI/2; fa.position.set(0, 0.1, p.D/2 + 1.4); bld.add(fa);
+    R3.objs = objs;
+    if (R3.lastOrient !== p.orient || R3.lastTyp !== p.typ){
+      R3.lastOrient = p.orient; R3.lastTyp = p.typ;
+      const g0 = p.orient*D2R, fx = Math.sin(g0), fz = -Math.cos(g0);
+      R3.camera.position.set(fx*34 - fz*16, 24, fz*34 + fx*16); R3.controls.target.set(0, 3, 0); R3.controls.update();
+    }
+    // sun path for the displayed days (one day)
+    if (R3.pathLine){ R3.scene.remove(R3.pathLine); R3.pathLine.geometry.dispose(); }
+    const pts = [];
+    const R = state.res.R;
+    for (let i = 0; i < 144; i++){ if (R.alt[i] > 0) pts.push(sunVec(R.alt[i], R.az[i], 45)); }
+    if (pts.length > 1){
+      R3.pathLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({color:0xe0a030, dashSize:1, gapSize:0.6}));
+      R3.pathLine.computeLineDistances(); R3.scene.add(R3.pathLine);
+    }
+  }
+}
+function sunVec(alt, az, r){ return new THREE.Vector3(r*Math.cos(alt)*Math.sin(az), r*Math.sin(alt), -r*Math.cos(alt)*Math.cos(az)); }
+function paint3D(i){
+  if (!R3 || !R3.objs) return;
+  const R = state.res.R, o = R3.objs, mode = $("view3d").value;
+  const alt = R.alt[i], az = R.az[i];
+  const up = alt > 0;
+  const v = sunVec(Math.max(alt, 0.02), az, 45);
+  R3.sun.position.copy(v); R3.sun.intensity = up ? 0.35 + 0.75*Math.min(1, Math.sin(alt)*1.6) : 0.0;
+  R3.sunBall.position.copy(v); R3.sunBall.visible = up;
+  const T = [R.T1[i], R.T2[i]];
+  o.walls.forEach((w, k) => {
+    if (mode === "indoor"){ w.material.color.set(0xd9d4cc); w.material.opacity = 0.18; w.material.depthWrite = false; }
+    else if (mode === "surface"){ w.material.color.copy(heatColor(R.Tw[k][i], 10, 45)); w.material.opacity = 1; w.material.depthWrite = true; }
+    else { w.material.color.set(0xa4543a); w.material.opacity = 1; w.material.depthWrite = true; }
+    w.castShadow = mode !== "indoor";
+  });
+  o.slabs.forEach((s, k) => { s.visible = mode === "indoor"; s.material.color.copy(heatColor(T[k], 18, 36)); });
+  if (o.roof){
+    if (mode === "surface") o.roof.material.color.copy(heatColor(R.Troof[i], 10, 70));
+    else o.roof.material.color.set(state.p.aroof < 0.4 ? 0xe8e8e2 : state.p.aroof < 0.7 ? 0x8a8a86 : 0x2e2e2e);
+  }
+  o.wins.forEach(w => {
+    const q = R.qf[w.fi][w.k][i]/Math.max(0.1, state.F.winA(state.F.fac[w.fi], w.k)); // W per m² of window
+    const t = Math.min(1, q/350);
+    w.m.material.emissive.setRGB(1.0*t, 0.75*t, 0.25*t);
+  });
+  const ttl = state.p.roofT === "flat" ? "Roof deck" : "Attic";
+  $("ov").innerHTML = `${clockLabel(R.t[i])}<br>Outdoor <b>${fT(R.To[i])}</b><br>Floor 2 <b>${fT(R.T2[i])}</b> · Floor 1 <b>${fT(R.T1[i])}</b><br>${ttl} <b>${fT(state.p.roofT === "flat" ? R.Troof[i] : R.Ttop[i])}</b><br>Window solar <b>${((R.q1[i] + R.q2[i])/1000).toFixed(2)} kW</b>${R.vent[i] ? " · windows open" : ""}${R.hvac[i] < -0.01 ? ` · AC ${(-R.hvac[i]).toFixed(1)} kW` : ""}`;
+}
+
+/* ================================================================
+   TIME
+   ================================================================ */
+function setTime(i){
+  const R = state.res.R; i = Math.max(0, Math.min(R.t.length - 1, i)); state.tIdx = i;
+  $("time").value = R.t[i];
+  $("clock").textContent = clockLabel(R.t[i]);
+  const alt = R.alt[i]/D2R, az = R.az[i]/D2R;
+  $("sunTxt").textContent = alt > 0 ? `Sun ${alt.toFixed(0)}° high, from ${compass(az)} (${az.toFixed(0)}°) · GHI ${R.ghi[i].toFixed(0)} W/m²` : "Sun below horizon";
+  paint3D(i);
+  [cT, cS].forEach(c => c && c.draw());
+}
+let playing = null;
+$("play").addEventListener("click", () => {
+  if (playing){ clearInterval(playing); playing = null; $("play").textContent = "▶ Play"; return; }
+  $("play").textContent = "❚❚ Pause";
+  playing = setInterval(() => setTime((state.tIdx + 1) % state.res.R.t.length), 60);
+});
+$("time").addEventListener("input", e => setTime(Math.round(+e.target.value*6)));
+
+/* ================================================================
+   WIRING
+   ================================================================ */
+function initControls(){
+  const sel = $("site");
+  hoods.forEach(h => { const o = document.createElement("option"); o.value = o.textContent = h.name; sel.appendChild(o); });
+  sel.addEventListener("change", () => selectSite(hoods.find(h => h.name === sel.value)));
+  for (const id in sliders){
+    $(id).addEventListener("input", e => {
+      const v = +e.target.value;
+      if (id in keyMap) state.uhi[keyMap[id]] = v; else state.p[id] = v;
+      $(id + "O").textContent = sliders[id][0](e.target.value);
+      if (id === "orient"){ buildWinTable(); drawGlyph(); }
+      if (id === "W" || id === "D") drawGlyph();
+      run(id in keyMap);
+    });
+  }
+  ["scen","sky","vent","hvac","roofT"].forEach(id => $(id).addEventListener("change", e => { state.p[id] = e.target.value; syncUI(); run(); }));
+  $("mass").addEventListener("change", e => { state.p.mass = +e.target.value; run(); });
+  $("typ").addEventListener("change", e => { applyTypology(e.target.value); syncUI(); drawGlyph(); run(); });
+  $("era").addEventListener("change", e => { applyEra(e.target.value); syncUI(); run(); });
+  $("metric").addEventListener("change", drawMapColors);
+  $("balScope").addEventListener("change", renderCharts);
+  $("view3d").addEventListener("change", () => paint3D(state.tIdx));
+  $("uC").addEventListener("click", () => setUnits(false));
+  $("uF").addEventListener("click", () => setUnits(true));
+  $("pin").addEventListener("click", () => {
+    if (state.pins.length >= 4) state.pins.shift();
+    state.pins.push({label:scenarioLabel(), t:state.res.R.t.slice(), T2:state.res.R.T2.slice(), kpi:{...state.res.kpi}});
+    renderCharts(); renderCmp();
+  });
+  $("clearPins").addEventListener("click", () => { state.pins = []; renderCharts(); renderCmp(); });
+  $("presets").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const p = state.p;
+    switch (b.dataset.p){
+      case "baseline": applyTypology(p.typ); applyEra("pre1940"); Object.assign(p, {aroof:0.9, blinds:0, vent:"cooler", orient:180, hvac:"off"}); break;
+      case "coolroof": p.aroof = 0.25; break;
+      case "insulate": p.Rroof = 5.3; break;
+      case "blinds": p.blinds = 1; p.vent = "night"; p.achV = 6; break;
+      case "rotate": p.orient = (p.orient + 90) % 360; break;
+      case "retrofit": applyEra("ph"); p.aroof = 0.3; p.blinds = 0.5; break;
+    }
+    syncUI(); drawGlyph(); run();
+  });
+  $("csv").addEventListener("change", async e => {
+    const file = e.target.files[0]; if (!file) return;
+    const txt = await file.text();
+    const lines = txt.split(/\r?\n/).filter(l => l.trim());
+    const hdr = lines.shift().toLowerCase().split(",").map(s => s.trim());
+    const iN = hdr.indexOf("name"), iD = hdr.indexOf("uhi_day"), iNi = hdr.indexOf("uhi_night");
+    if (iN < 0 || iD < 0 || iNi < 0){ $("csvMsg").textContent = "Header must contain name, uhi_day, uhi_night."; return; }
+    let n = 0;
+    lines.forEach(l => {
+      const c = l.split(","), h = hoods.find(x => x.name.toLowerCase() === (c[iN] || "").trim().toLowerCase());
+      if (h && isFinite(+c[iD]) && isFinite(+c[iNi])){ h.uhi = {day:+c[iD], night:+c[iNi]}; h.src = "your CSV"; n++; }
+    });
+    $("csvMsg").textContent = `Matched ${n} of ${lines.length} rows.`;
+    state.uhi = {...state.site.uhi}; syncUI(); run();
+  });
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  mq.addEventListener && mq.addEventListener("change", restyleCharts);
+  new MutationObserver(restyleCharts).observe(document.documentElement, {attributes:true, attributeFilter:["data-theme"]});
+}
+function setUnits(f){
+  unitF = f; $("uC").setAttribute("aria-pressed", String(!f)); $("uF").setAttribute("aria-pressed", String(f));
+  syncUI(); renderKPIs(); renderCharts(); renderCmp(); drawMapColors(); setTime(state.tIdx);
+}
+
+if (typeof Chart !== "undefined"){ Chart.defaults.font.family = "'IBM Plex Sans', 'Segoe UI', Roboto, sans-serif"; }
+initControls();
+syncUI();
+setupMap();
+drawGlyph();
+setup3D();
+run(true);
+runMap();
+setTime(state.tIdx);
+</script>
+</body>
+</html>
