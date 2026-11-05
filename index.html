@@ -306,7 +306,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
         <input type="range" id="time" min="0" max="71.83" step="0.1667" value="38" aria-label="Simulation time">
         <span class="note" id="sunTxt"></span>
       </div>
-      <p class="note">Drag to orbit, scroll to zoom. Window glow = transmitted solar gain. The orange arc is the day's sun path (hourly dots, labels every 3 h) on a 20 m dome over a compass ring; the sun and its ray to the house move with the time slider.</p>
+      <p class="note">Drag to orbit, scroll to zoom. Window glow = transmitted solar gain. The orange arc is the day's sun path (hourly dots, labels every 3 h) on a 30 m dome over a compass ring; the sun and its ray to the house move with the time slider.</p>
     </section>
     <div class="side">
     <section class="card map-card">
@@ -382,7 +382,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 /* ================================================================
    PHYSICS MODEL
    ================================================================ */
-const SUN_R = 20; // radius (m) of the drawn sun dome around the house
+const SUN_R = 30; // radius (m) of the drawn sun dome around the house
 const D2R = Math.PI/180, RHOCP = 1200, H_O = 17, FLOOR_H = 2.8;
 const DT = 60, SPIN_DAYS = 7, SHOW_DAYS = 3, N_DAYS = SPIN_DAYS + SHOW_DAYS;
 const STEPS = N_DAYS*86400/DT, REC = 10; // record every 10 steps (10 min)
@@ -951,7 +951,7 @@ function setup3D(){
   scene.add(new THREE.HemisphereLight(0xdfeaf2, 0x6d6a5e, 0.55));
   const sun = new THREE.DirectionalLight(0xfff1d6, 1.0);
   sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, {left:-40, right:40, top:40, bottom:-40, near:1, far:200});
+  Object.assign(sun.shadow.camera, {left:-20, right:20, top:20, bottom:-20, near:1, far:200});
   scene.add(sun); scene.add(sun.target);
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(160, 160), new THREE.MeshLambertMaterial({color:0x7f8f74}));
   ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
@@ -965,12 +965,12 @@ function setup3D(){
     tick.rotation.x = -Math.PI/2; tick.rotation.z = -r; tick.position.set((SUN_R + len/2)*Math.sin(r), 0.07, -(SUN_R + len/2)*Math.cos(r)); scene.add(tick);
   }
   [["N",0],["E",90],["S",180],["W",270]].forEach(([t, a]) => {
-    const sp = makeLabel(t, a === 0 ? "#b3261e" : "#22302d", 52); sp.scale.set(2.6, 1.3, 1);
+    const sp = makeLabel(t, a === 0 ? "#b3261e" : "#22302d", 52); sp.scale.set(4.4, 2.2, 1);
     sp.position.set((SUN_R + 3.2)*Math.sin(a*D2R), 1.3, -(SUN_R + 3.2)*Math.cos(a*D2R)); scene.add(sp);
   });
-  const sunBall = new THREE.Mesh(new THREE.SphereGeometry(1.1, 24, 16), new THREE.MeshBasicMaterial({color:0xffc94a}));
+  const sunBall = new THREE.Mesh(new THREE.SphereGeometry(1.5, 24, 16), new THREE.MeshBasicMaterial({color:0xffc94a}));
   scene.add(sunBall);
-  const halo = new THREE.Mesh(new THREE.SphereGeometry(1.9, 24, 16), new THREE.MeshBasicMaterial({color:0xffd27a, transparent:true, opacity:0.25, depthWrite:false}));
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(2.6, 24, 16), new THREE.MeshBasicMaterial({color:0xffd27a, transparent:true, opacity:0.25, depthWrite:false}));
   sunBall.add(halo);
   const sunRay = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 1, 0)]), new THREE.LineDashedMaterial({color:0xe0a030, dashSize:0.6, gapSize:0.4}));
   scene.add(sunRay);
@@ -1027,25 +1027,12 @@ function update3D(rebuild){
         }
       }
     });
-    // context: party-wall neighbors, street and opposite row
-    const nbMat = new THREE.MeshLambertMaterial({color:0x8f6f60});
-    const addBox = (w, h, d, x, y, z, mat) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat || nbMat); b.position.set(x, y, z); b.castShadow = true; b.receiveShadow = true; bld.add(b); return b; };
-    if (g.party.includes("right")) for (let i = 1; i <= (p.typ === "row" ? 4 : 1); i++) addBox(p.W, 2*H, p.D, i*p.W, H, 0);
-    if (g.party.includes("left")) for (let i = 1; i <= 4; i++) addBox(p.W, 2*H, p.D, -i*p.W, H, 0);
-    if (p.hw > 0.01){
-      const Wst = 2*H/p.hw, L = p.typ === "row" ? 9*p.W : 40;
-      const street = new THREE.Mesh(new THREE.PlaneGeometry(L + 10, Wst), new THREE.MeshLambertMaterial({color:0x55595a}));
-      street.rotation.x = -Math.PI/2; street.position.set(0, 0.02, p.D/2 + Wst/2); street.receiveShadow = true; bld.add(street);
-      const opp = addBox(L, 2*H, 6, 0, H, p.D/2 + Wst + 3, new THREE.MeshLambertMaterial({color:0xc4bdb0, transparent:true, opacity:0.2, depthWrite:false})); opp.castShadow = true;
-    }
-    // front arrow on the ground
-    const fa = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.6, 3), new THREE.MeshLambertMaterial({color:0x0e6b70}));
-    fa.rotation.x = Math.PI/2; fa.position.set(0, 0.1, p.D/2 + 1.4); bld.add(fa);
+    // only the house itself is drawn; party walls and the street canyon still act in the physics model
     R3.objs = objs;
     if (R3.lastOrient !== p.orient || R3.lastTyp !== p.typ){
       R3.lastOrient = p.orient; R3.lastTyp = p.typ;
       const g0 = p.orient*D2R, fx = Math.sin(g0), fz = -Math.cos(g0);
-      R3.camera.position.set(fx*54 - fz*22, 24, fz*54 + fx*22); R3.controls.target.set(0, 7, 0); R3.controls.update();
+      R3.camera.position.set(fx*70 - fz*28, 34, fz*70 + fx*28); R3.controls.target.set(0, 10, 0); R3.controls.update();
     }
     // sun path for the displayed days (one day)
     disposeGroup(R3.sunGroup);
@@ -1062,8 +1049,8 @@ function update3D(rebuild){
         dot.position.copy(pos); R3.sunGroup.add(dot);
         const hr = Math.round((R.t[i] + state.F.dst) % 24);
         if (hr % 3 === 0){
-          const lb = makeLabel(String(hr).padStart(2, "0") + ":00", "#6b4a12", 30); lb.scale.set(2.8, 1.4, 1);
-          lb.position.copy(pos).add(new THREE.Vector3(0, 1.3, 0)); R3.sunGroup.add(lb);
+          const lb = makeLabel(String(hr).padStart(2, "0") + ":00", "#6b4a12", 30); lb.scale.set(4.4, 2.2, 1);
+          lb.position.copy(pos).add(new THREE.Vector3(0, 2.4, 0)); R3.sunGroup.add(lb);
         }
       }
     }
