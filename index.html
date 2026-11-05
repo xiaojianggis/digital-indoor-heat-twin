@@ -101,6 +101,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .overlay{position:absolute;right:10px;top:10px;background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-size:12px;line-height:1.5}
 .overlay b{font-family:var(--mono);font-weight:500}
 .timebar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.datebar .lbl{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .timebar input[type=range]{flex:1;min-width:200px;accent-color:var(--accent)}
 #clock{font-family:var(--mono);font-size:15px;min-width:150px}
 .chartbox{position:relative;height:300px}
@@ -173,8 +174,6 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
     <legend>Site &amp; weather</legend>
     <div class="ctl"><label for="site">Neighborhood</label><output id="siteLL" class="mono"></output>
       <select id="site" style="grid-column:1/-1"></select></div>
-    <div class="ctl"><label for="month">Month (typical day)</label><output id="monthO"></output>
-      <input type="range" id="month" min="1" max="12" step="1" value="7"></div>
     <div class="ctl"><label for="scen">Weather scenario</label><span></span>
       <select id="scen" style="grid-column:1/-1">
         <option value="typical">Typical day (1991–2020 normals)</option>
@@ -300,13 +299,23 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
         </div>
         <div id="twin"><div class="overlay" id="ov"></div></div>
       </div>
+      <div class="timebar datebar">
+        <label class="lbl" for="mon">Date</label>
+        <select id="mon" style="width:auto" aria-label="Month"></select>
+        <select id="dom" style="width:auto" aria-label="Day of month"></select>
+        <span class="lbl">Simulated day</span>
+        <div class="seg" role="group" aria-label="Simulated day" id="simDay">
+          <button data-d="0" aria-pressed="false">1</button><button data-d="1" aria-pressed="true">2</button><button data-d="2" aria-pressed="false">3</button>
+        </div>
+        <span class="note" id="dayNote"></span>
+      </div>
       <div class="timebar">
-        <button id="play" class="primary" aria-label="Play time">▶ Play</button>
-        <span id="clock">Day 1 00:00</span>
-        <input type="range" id="time" min="0" max="71.83" step="0.1667" value="38" aria-label="Simulation time">
+        <button id="play" class="primary" aria-label="Play this day">▶ Play day</button>
+        <span id="clock">00:00</span>
+        <input type="range" id="time" min="0" max="23.8333" step="0.1667" value="15" aria-label="Time of day">
         <span class="note" id="sunTxt"></span>
       </div>
-      <p class="note">Drag to orbit, scroll to zoom. Window glow = transmitted solar gain. The orange arc is the day's sun path (hourly dots, labels every 3 h) on a 30 m dome over a compass ring; the sun and its ray to the house move with the time slider.</p>
+      <p class="note">Drag to orbit, scroll to zoom. Window glow = transmitted solar gain. The orange arc is the day's sun path (hourly dots, labels every 3 h) on a 30 m dome over a compass ring; pick a date and simulated day above the slider, then play to sweep that day from 00:00 to 24:00.</p>
     </section>
     <div class="side">
     <section class="card map-card">
@@ -367,7 +376,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
       <p><b>Street canyon.</b> For the front façade, the opposite row (same height) casts a shadow line at H<sub>b</sub> − W<sub>street</sub>·tan(profile angle); window sunlit fraction and sky view factor (1 − sin ε)/2 follow from it.</p>
       <p><b>Windows.</b> Transmitted solar = glazed area (85%) × SHGC × incidence-angle modifier × blind factor; 30% goes to air, 70% to the mass. Conduction U·A to outdoor air. Internal gains follow a residential schedule.</p>
       <p><b>Opaque surfaces.</b> Sol-air temperature T<sub>o</sub> + α·I/h<sub>o</sub> − εΔR/h<sub>o</sub> (h<sub>o</sub> = 17 W/m²K, ΔR = 63 W/m² for a horizontal surface, scaled by cloudiness). Basement/ground follows an annual sinusoid around 13.5 °C.</p>
-      <p><b>Weather.</b> Hourly air temperature from 1991–2020 PHL monthly mean max/min with the ASHRAE diurnal profile, plus the neighborhood's UHI offset (day value at noon, night value after dark). Heat waves add the chosen ΔT on three clear days.</p>
+      <p><b>Weather.</b> Hourly air temperature from 1991–2020 PHL normal max/min (interpolated between mid-month values for the chosen date) with the ASHRAE diurnal profile, plus the neighborhood's UHI offset (day value at noon, night value after dark). Heat waves add the chosen ΔT on three clear days.</p>
       <p><b>Limits.</b> Single typical day per month, no wind-driven or stack-driven flow model, no detailed longwave exchange between rooms. The neighborhood UHI values are an illustrative proxy, not measurements; import measured offsets for real analysis.</p>
     </div>
   </section>
@@ -394,6 +403,17 @@ const CLIM = {
 };
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MIDDOY = [17,47,75,105,135,162,198,228,258,288,318,344];
+const MDAYS = [31,28,31,30,31,30,31,31,30,31,30,31];
+const CUM = [0,31,59,90,120,151,181,212,243,273,304,334];
+const doyOf = (month, day) => CUM[month - 1] + Math.min(day, MDAYS[month - 1]);
+function climAt(arr, doy){ // linear interpolation between mid-month normals, wrapping the year
+  for (let i = 0; i < 12; i++){
+    const a = MIDDOY[i], b = i < 11 ? MIDDOY[i + 1] : MIDDOY[0] + 365;
+    const d = doy < MIDDOY[0] ? doy + 365 : doy;
+    if (d >= a && d < b) return arr[i] + (arr[(i + 1) % 12] - arr[i])*(d - a)/(b - a);
+  }
+  return arr[0];
+}
 // ASHRAE fraction of daily range below the max, for hours 1..24
 const PROF = [0.87,0.92,0.96,0.99,1.00,0.98,0.93,0.84,0.71,0.56,0.39,0.23,0.11,0.03,0.00,0.03,0.10,0.21,0.34,0.47,0.58,0.68,0.76,0.82];
 function profAt(h){ // h in 0..24 local standard time
@@ -452,12 +472,13 @@ const sched = h => { // internal-gain fraction by clock hour
 };
 
 function buildForcing(p, lat, lon){
-  const m = p.month - 1, doy = MIDDOY[m], dst = (p.month >= 3 && p.month <= 10) ? 1 : 0;
+  const doy = doyOf(p.month, p.day), dst = (doy >= 69 && doy <= 307) ? 1 : 0; // EDT ≈ 2nd Sun Mar – 1st Sun Nov
+  const tmaxD = climAt(CLIM.tmax, doy), tminD = climAt(CLIM.tmin, doy), ghiD = climAt(CLIM.ghi, doy);
   // sky clearness factor calibrated to the monthly mean daily GHI
   let clearDay = 0;
   for (let h = 0; h < 24; h += 0.25) clearDay += haurwitz(solarPos(doy, h, lat, lon).cosZ)*0.25/1000;
-  const kcAvg = Math.min(1, CLIM.ghi[m]/clearDay);
-  const range = CLIM.tmax[m] - CLIM.tmin[m];
+  const kcAvg = Math.min(1, ghiD/clearDay);
+  const range = tmaxD - tminD;
   const dayOff = new Array(N_DAYS).fill(0), dayKc = new Array(N_DAYS).fill(p.sky === "clear" ? 1 : p.sky === "overcast" ? 0.3 : kcAvg);
   if (p.scen !== "typical"){
     const sgn = p.scen === "heatwave" ? 1 : -1;
@@ -475,14 +496,14 @@ function buildForcing(p, lat, lon){
     To0: new Float32Array(N), night: new Float32Array(N), ghi: new Float32Array(N), alt: new Float32Array(N), az: new Float32Array(N),
     Tg: 0, saW: [new Float32Array(N), new Float32Array(N)], saR: new Float32Array(N), Iroof: new Float32Array(N),
     qsol: [new Float32Array(N), new Float32Array(N)], qsolFac: fac.map(() => [new Float32Array(N), new Float32Array(N)]),
-    Ifac: fac.map(() => new Float32Array(N)), fac, dst, doy, kcAvg, clockStart: dst
+    Ifac: fac.map(() => new Float32Array(N)), fac, dst, doy, kcAvg, tmaxD, tminD
   };
   F.Tg = 13.5 + 5.5*Math.cos(2*Math.PI*(doy - 230)/365);
   const winA = (f, k) => f.party ? 0 : Math.min(p.win[f.key][k], 0.8*f.len*FLOOR_H);
   const opA = (f, k) => f.party ? 0 : f.len*FLOOR_H - winA(f, k);
   for (let s = 0; s < N; s++){
     const t = s*DT/3600, d = Math.floor(t/24), h = t - 24*d;
-    F.To0[s] = CLIM.tmax[m] + dayOff[d] - profAt(h)*range;
+    F.To0[s] = tmaxD + dayOff[d] - profAt(h)*range;
     const sp = solarPos(doy, h, lat, lon);
     F.alt[s] = sp.alt; F.az[s] = sp.az;
     F.night[s] = Math.max(0, Math.min(1, 1 - Math.sin(sp.alt)/0.26));
@@ -563,9 +584,9 @@ function simulate(p, F, uhi, record = true){
   const Crd = Aroof*15e3, Krdo = Aroof*H_O, Krda = Aroof*5, Cat = Vat*RHOCP*3;
   const Katv = RHOCP*p.achAt*Vat/3600, Kceil = Af/(p.Rroof + 0.3);
   const capK = p.cap*1000/2;
-  const T0 = (CLIM.tmax[p.month - 1] + CLIM.tmin[p.month - 1])/2 + 3;
+  const T0 = (F.tmaxD + F.tminD)/2 + 3;
   let Ta = [T0, T0], Tm = [T0, T0], Tw = [T0, T0], Tr = T0, Trd = T0, Tat = T0;
-  const nRec = SHOW_DAYS*86400/DT/REC, recStart = SPIN_DAYS*86400/DT;
+  const recStart = SPIN_DAYS*86400/DT - F.dst*3600/DT, recEnd = recStart + SHOW_DAYS*86400/DT; // displayed window = clock midnight to midnight
   const R = record ? {t:[], To:[], T1:[], T2:[], Ttop:[], Troof:[], Tsr:[], hvac:[], ghi:[], Iroof:[], Ifac:F.fac.map(() => []), q1:[], q2:[], vent:[]} : null;
   const lastDay = STEPS - 86400/DT;
   const bal = {f1:{}, f2:{}};
@@ -622,7 +643,7 @@ function simulate(p, F, uhi, record = true){
       Tat += DT/Cat*(qda + Katv*(To - Tat) - Kceil*(Tat - Ta[1]));
     }
     Ta = nTa;
-    if (s >= recStart){
+    if (s >= recStart && s < recEnd){
       peak1 = Math.max(peak1, Ta[0]); peak2 = Math.max(peak2, Ta[1]); min2 = Math.min(min2, Ta[1]);
       if (Ta[1] >= 26) h26 += DT/3600; if (Ta[1] >= 30) h30 += DT/3600;
       coolE += -Math.min(0, hv[0] + hv[1])*DT/3.6e6; heatE += Math.max(0, hv[0]) * DT/3.6e6 + Math.max(0, hv[1])*DT/3.6e6;
@@ -679,16 +700,16 @@ const fT = (c, d = 1) => (c == null || !isFinite(c)) ? "–" : cv(c).toFixed(d) 
 const fdT = (c, d = 1) => (unitF ? (c*9/5).toFixed(d) + " °F" : c.toFixed(d) + " °C");
 const state = {
   site: hoods.find(h => h.name === "Hunting Park") || hoods[0],
-  p: {month:7, scen:"heatwave", dT:5, sky:"avg", typ:"row", era:"pre1940", orient:180, W:5, D:12, hw:0.7, mass:260000,
+  p: {month:7, day:17, scen:"heatwave", dT:5, sky:"avg", typ:"row", era:"pre1940", orient:180, W:5, D:12, hw:0.7, mass:260000,
       roofT:"flat", Rroof:0.4, aroof:0.9, achAt:3, Uw:1.9, Ug:4.8, shgc:0.75, blinds:0, ach:0.9, vent:"cooler", achV:4,
       qint:6, hvac:"off", Tc:26, Th:20, cap:3.5, awall:0.7, cw:400e3,
       win:JSON.parse(JSON.stringify(TYPOLOGY.row.win))},
-  uhi: {day:1, night:2}, res:null, F:null, pins:[], tIdx:228
+  uhi: {day:1, night:2}, res:null, F:null, pins:[], simDay:1, hour:90, tIdx:234
 };
 state.uhi = {...state.site.uhi};
 
 const sliders = {
-  month:[v => MONTHS[v - 1]], dT:[v => "±" + fdT(+v)], uhiN:[v => "+" + fdT(+v)], uhiD:[v => "+" + fdT(+v)],
+  dT:[v => "±" + fdT(+v)], uhiN:[v => "+" + fdT(+v)], uhiD:[v => "+" + fdT(+v)],
   orient:[v => v + "° " + compass(+v)], W:[v => (+v).toFixed(1) + " m"], D:[v => (+v).toFixed(1) + " m"], hw:[v => (+v).toFixed(2)],
   Rroof:[v => "R " + (+v).toFixed(1) + " m²K/W · R-" + Math.round(v*5.678)], aroof:[v => (+v).toFixed(2)], achAt:[v => (+v).toFixed(1) + " ACH"],
   Uw:[v => (+v).toFixed(2) + " W/m²K"], Ug:[v => (+v).toFixed(1) + " W/m²K"], shgc:[v => (+v).toFixed(2)], blinds:[v => Math.round(v*100) + "%"],
@@ -744,7 +765,7 @@ function run(skipMap){
   const p = state.p;
   state.F = buildForcing(p, state.site.c[1], state.site.c[0]);
   state.res = simulate(p, state.F, state.uhi, true);
-  renderKPIs(); renderCharts(); renderCmp(); update3D(true); setTime(state.tIdx);
+  renderKPIs(); renderCharts(); renderCmp(); update3D(true); setSimDay(state.simDay);
   if (!skipMap){ clearTimeout(mapTimer); mapTimer = setTimeout(runMap, 250); }
 }
 function runMap(){
@@ -779,7 +800,8 @@ function renderKPIs(){
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 let cT, cB, cS;
 const PIN_COLORS = ["#7b5cc4", "#2f8f4e", "#b8860b", "#c2417a"];
-const clockLabel = (t) => { const tt = t + state.F.dst; const d = Math.floor(tt/24) + 1, h = Math.floor(tt % 24), mm = Math.round((tt % 1)*60) % 60; return `Day ${d} ${String(h).padStart(2,"0")}:${String(mm).padStart(2,"0")}`; };
+const hhmm = t => { const m = Math.round(t*60) % 1440; return String(Math.floor(m/60)).padStart(2,"0") + ":" + String(m % 60).padStart(2,"0"); };
+const clockLabel = t => `${MONTHS[state.p.month - 1]} ${state.p.day}, day ${Math.floor(t/24 + 1e-6) + 1} · ${hhmm(t % 24)}`;
 const cursorPlugin = {
   id:"cursor",
   afterDatasetsDraw(ch){
@@ -797,7 +819,7 @@ function baseOpts(yTitle){
     plugins:{legend:{labels:{color:ink, boxWidth:14, boxHeight:3, font:{family:"IBM Plex Sans", size:11}}},
       tooltip:{callbacks:{title:items => clockLabel(items[0].parsed.x)}}},
     scales:{
-      x:{type:"linear", min:0, max:72, grid:{color:grid}, ticks:{color:ink, stepSize:6, callback:v => { const h = (v + state.F.dst) % 24; return h === 0 ? "Day " + (Math.floor((v + state.F.dst)/24) + 1) : String(h).padStart(2,"0") + ":00"; }, font:{family:"IBM Plex Mono", size:10}}},
+      x:{type:"linear", min:0, max:72, grid:{color:grid}, ticks:{color:ink, stepSize:6, callback:v => { const h = v % 24; return h === 0 ? "Day " + (v/24 + 1) : String(h).padStart(2,"0") + ":00"; }, font:{family:"IBM Plex Mono", size:10}}},
       y:{grid:{color:grid}, ticks:{color:ink, font:{family:"IBM Plex Mono", size:10}}, title:{display:true, text:yTitle, color:ink}}
     }
   };
@@ -842,7 +864,7 @@ function restyleCharts(){ [cT, cB, cS].forEach(c => c && c.destroy()); cT = cB =
    ================================================================ */
 function scenarioLabel(){
   const p = state.p;
-  return `${{row:"Row", twin:"Twin", det:"Detached"}[p.typ]} ${compass(p.orient)}, R${p.Rroof.toFixed(1)}, α${p.aroof.toFixed(2)}, ${MONTHS[p.month - 1]}`;
+  return `${{row:"Row", twin:"Twin", det:"Detached"}[p.typ]} ${compass(p.orient)}, R${p.Rroof.toFixed(1)}, α${p.aroof.toFixed(2)}, ${MONTHS[p.month - 1]} ${p.day}`;
 }
 function renderCmp(){
   const cur = {label:"Current", kpi:state.res.kpi, color:css("--hot")};
@@ -1035,19 +1057,25 @@ function update3D(rebuild){
       R3.camera.position.set(fx*70 - fz*28, 34, fz*70 + fx*28); R3.controls.target.set(0, 10, 0); R3.controls.update();
     }
     // sun path for the displayed days (one day)
+    drawSunPath();
+  }
+}
+function drawSunPath(){
+  if (!R3) return;
+  {
     disposeGroup(R3.sunGroup);
-    const R = state.res.R, pts = [];
-    for (let i = 0; i < 144; i++){ if (R.alt[i] > 0) pts.push(sunVec(R.alt[i], R.az[i], SUN_R)); }
+    const R = state.res.R, pts = [], i0 = state.simDay*144;
+    for (let i = i0; i < i0 + 144; i++){ if (R.alt[i] > 0) pts.push(sunVec(R.alt[i], R.az[i], SUN_R)); }
     if (pts.length > 1){
       const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 160, 0.14, 8, false), new THREE.MeshBasicMaterial({color:0xe39a2d}));
       R3.sunGroup.add(tube);
       // hour markers along the path (clock time), labels every 3 h
-      for (let i = 0; i < 144; i += 6){
+      for (let i = i0; i < i0 + 144; i += 6){
         if (R.alt[i] <= 0) continue;
         const pos = sunVec(R.alt[i], R.az[i], SUN_R);
         const dot = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), new THREE.MeshBasicMaterial({color:0xb86f12}));
         dot.position.copy(pos); R3.sunGroup.add(dot);
-        const hr = Math.round((R.t[i] + state.F.dst) % 24);
+        const hr = Math.round(R.t[i] % 24);
         if (hr % 3 === 0){
           const lb = makeLabel(String(hr).padStart(2, "0") + ":00", "#6b4a12", 30); lb.scale.set(4.4, 2.2, 1);
           lb.position.copy(pos).add(new THREE.Vector3(0, 2.4, 0)); R3.sunGroup.add(lb);
@@ -1098,8 +1126,9 @@ function paint3D(i){
    ================================================================ */
 function setTime(i){
   const R = state.res.R; i = Math.max(0, Math.min(R.t.length - 1, i)); state.tIdx = i;
-  $("time").value = R.t[i];
-  $("clock").textContent = clockLabel(R.t[i]);
+  state.simDay = Math.floor(i/144); state.hour = i % 144;
+  $("time").value = state.hour/6;
+  $("clock").textContent = hhmm(state.hour/6);
   const alt = R.alt[i]/D2R, az = R.az[i]/D2R;
   $("sunTxt").textContent = alt > 0 ? `Sun ${alt.toFixed(0)}° high, from ${compass(az)} (${az.toFixed(0)}°) · GHI ${R.ghi[i].toFixed(0)} W/m²` : "Sun below horizon";
   paint3D(i);
@@ -1107,11 +1136,30 @@ function setTime(i){
 }
 let playing = null;
 $("play").addEventListener("click", () => {
-  if (playing){ clearInterval(playing); playing = null; $("play").textContent = "▶ Play"; return; }
+  if (playing){ clearInterval(playing); playing = null; $("play").textContent = "▶ Play day"; return; }
   $("play").textContent = "❚❚ Pause";
-  playing = setInterval(() => setTime((state.tIdx + 1) % state.res.R.t.length), 60);
+  playing = setInterval(() => setTime(state.simDay*144 + (state.hour + 1) % 144), 60);
 });
-$("time").addEventListener("input", e => setTime(Math.round(+e.target.value*6)));
+$("time").addEventListener("input", e => setTime(state.simDay*144 + Math.round(+e.target.value*6)));
+function setSimDay(d){
+  state.simDay = d;
+  document.querySelectorAll("#simDay button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.d === d)));
+  const p = state.p;
+  $("dayNote").textContent = p.scen === "heatwave" ? ["Heat wave, day 1", "Heat wave, day 2", "Heat wave, day 3"][d]
+    : p.scen === "coldsnap" ? ["Cold snap, day 1", "Cold snap, day 2", "Cold snap, day 3"][d] : "Typical day after spin-up";
+  drawSunPath(); setTime(d*144 + state.hour);
+}
+function fillDays(){
+  const sel = $("dom"), n = MDAYS[state.p.month - 1];
+  state.p.day = Math.min(state.p.day, n);
+  sel.innerHTML = Array.from({length:n}, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
+  sel.value = state.p.day;
+}
+$("mon").innerHTML = MONTHS.map((m, i) => `<option value="${i + 1}">${m}</option>`).join("");
+$("mon").value = state.p.month; fillDays();
+$("mon").addEventListener("change", e => { state.p.month = +e.target.value; fillDays(); run(); });
+$("dom").addEventListener("change", e => { state.p.day = +e.target.value; run(); });
+document.querySelectorAll("#simDay button").forEach(b => b.addEventListener("click", () => setSimDay(+b.dataset.d)));
 
 /* ================================================================
    WIRING
