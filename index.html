@@ -306,7 +306,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
         <input type="range" id="time" min="0" max="71.83" step="0.1667" value="38" aria-label="Simulation time">
         <span class="note" id="sunTxt"></span>
       </div>
-      <p class="note">Drag to orbit, scroll to zoom. Window glow = transmitted solar gain. North arrow on the ground; the sun moves with the time slider.</p>
+      <p class="note">Drag to orbit, scroll to zoom. Window glow = transmitted solar gain. The orange arc is the day's sun path (hourly dots, labels every 3 h) on a 20 m dome over a compass ring; the sun and its ray to the house move with the time slider.</p>
     </section>
     <div class="side">
     <section class="card map-card">
@@ -382,6 +382,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 /* ================================================================
    PHYSICS MODEL
    ================================================================ */
+const SUN_R = 20; // radius (m) of the drawn sun dome around the house
 const D2R = Math.PI/180, RHOCP = 1200, H_O = 17, FLOOR_H = 2.8;
 const DT = 60, SPIN_DAYS = 7, SHOW_DAYS = 3, N_DAYS = SPIN_DAYS + SHOW_DAYS;
 const STEPS = N_DAYS*86400/DT, REC = 10; // record every 10 steps (10 min)
@@ -955,16 +956,28 @@ function setup3D(){
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(160, 160), new THREE.MeshLambertMaterial({color:0x7f8f74}));
   ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
   // north arrow on the ground (world -z is north)
-  const arrow = new THREE.Mesh(new THREE.ConeGeometry(1.1, 3.2, 3), new THREE.MeshLambertMaterial({color:0x22302d}));
-  arrow.rotation.x = -Math.PI/2; arrow.position.set(-22, 0.1, -20); scene.add(arrow);
-  const cnv = document.createElement("canvas"); cnv.width = cnv.height = 64;
-  const cx = cnv.getContext("2d"); cx.fillStyle = "#22302d"; cx.font = "bold 46px Archivo, sans-serif"; cx.textAlign = "center"; cx.fillText("N", 32, 48);
-  const lbl = new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cnv)})); lbl.scale.set(3, 3, 1); lbl.position.set(-22, 2, -24); scene.add(lbl);
-  const sunBall = new THREE.Mesh(new THREE.SphereGeometry(1.6, 20, 12), new THREE.MeshBasicMaterial({color:0xffc94a}));
+  // compass ring at the sun-dome radius, with cardinal labels (world -z is north)
+  const ring = new THREE.Mesh(new THREE.RingGeometry(SUN_R - 0.15, SUN_R + 0.15, 128), new THREE.MeshBasicMaterial({color:0x2c3a36, transparent:true, opacity:0.55, side:THREE.DoubleSide}));
+  ring.rotation.x = -Math.PI/2; ring.position.y = 0.06; scene.add(ring);
+  for (let a = 0; a < 360; a += 15){
+    const len = a % 90 === 0 ? 1.6 : a % 45 === 0 ? 1.0 : 0.5, r = a*D2R;
+    const tick = new THREE.Mesh(new THREE.PlaneGeometry(0.18, len), new THREE.MeshBasicMaterial({color:0x2c3a36, side:THREE.DoubleSide}));
+    tick.rotation.x = -Math.PI/2; tick.rotation.z = -r; tick.position.set((SUN_R + len/2)*Math.sin(r), 0.07, -(SUN_R + len/2)*Math.cos(r)); scene.add(tick);
+  }
+  [["N",0],["E",90],["S",180],["W",270]].forEach(([t, a]) => {
+    const sp = makeLabel(t, a === 0 ? "#b3261e" : "#22302d", 52); sp.scale.set(2.6, 1.3, 1);
+    sp.position.set((SUN_R + 3.2)*Math.sin(a*D2R), 1.3, -(SUN_R + 3.2)*Math.cos(a*D2R)); scene.add(sp);
+  });
+  const sunBall = new THREE.Mesh(new THREE.SphereGeometry(1.1, 24, 16), new THREE.MeshBasicMaterial({color:0xffc94a}));
   scene.add(sunBall);
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(1.9, 24, 16), new THREE.MeshBasicMaterial({color:0xffd27a, transparent:true, opacity:0.25, depthWrite:false}));
+  sunBall.add(halo);
+  const sunRay = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 1, 0)]), new THREE.LineDashedMaterial({color:0xe0a030, dashSize:0.6, gapSize:0.4}));
+  scene.add(sunRay);
+  const sunGroup = new THREE.Group(); scene.add(sunGroup);
   const site = new THREE.Group(); scene.add(site);
   let pathLine = null;
-  R3 = {renderer, scene, camera, controls, sun, sunBall, site, host, pathLine, objs:null};
+  R3 = {renderer, scene, camera, controls, sun, sunBall, sunRay, sunGroup, site, host, objs:null};
   const resize = () => { const w = host.clientWidth, h = host.clientHeight; renderer.setSize(w, h); camera.aspect = w/h; camera.updateProjectionMatrix(); };
   new ResizeObserver(resize).observe(host); resize();
   const loop = () => { controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); };
@@ -1032,18 +1045,35 @@ function update3D(rebuild){
     if (R3.lastOrient !== p.orient || R3.lastTyp !== p.typ){
       R3.lastOrient = p.orient; R3.lastTyp = p.typ;
       const g0 = p.orient*D2R, fx = Math.sin(g0), fz = -Math.cos(g0);
-      R3.camera.position.set(fx*42 - fz*18, 30, fz*42 + fx*18); R3.controls.target.set(0, 3, 0); R3.controls.update();
+      R3.camera.position.set(fx*54 - fz*22, 24, fz*54 + fx*22); R3.controls.target.set(0, 7, 0); R3.controls.update();
     }
     // sun path for the displayed days (one day)
-    if (R3.pathLine){ R3.scene.remove(R3.pathLine); R3.pathLine.geometry.dispose(); }
-    const pts = [];
-    const R = state.res.R;
-    for (let i = 0; i < 144; i++){ if (R.alt[i] > 0) pts.push(sunVec(R.alt[i], R.az[i], 45)); }
+    disposeGroup(R3.sunGroup);
+    const R = state.res.R, pts = [];
+    for (let i = 0; i < 144; i++){ if (R.alt[i] > 0) pts.push(sunVec(R.alt[i], R.az[i], SUN_R)); }
     if (pts.length > 1){
-      R3.pathLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({color:0xe0a030, dashSize:1, gapSize:0.6}));
-      R3.pathLine.computeLineDistances(); R3.scene.add(R3.pathLine);
+      const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 160, 0.14, 8, false), new THREE.MeshBasicMaterial({color:0xe39a2d}));
+      R3.sunGroup.add(tube);
+      // hour markers along the path (clock time), labels every 3 h
+      for (let i = 0; i < 144; i += 6){
+        if (R.alt[i] <= 0) continue;
+        const pos = sunVec(R.alt[i], R.az[i], SUN_R);
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), new THREE.MeshBasicMaterial({color:0xb86f12}));
+        dot.position.copy(pos); R3.sunGroup.add(dot);
+        const hr = Math.round((R.t[i] + state.F.dst) % 24);
+        if (hr % 3 === 0){
+          const lb = makeLabel(String(hr).padStart(2, "0") + ":00", "#6b4a12", 30); lb.scale.set(2.8, 1.4, 1);
+          lb.position.copy(pos).add(new THREE.Vector3(0, 1.3, 0)); R3.sunGroup.add(lb);
+        }
+      }
     }
   }
+}
+function makeLabel(text, color, px){
+  const c = document.createElement("canvas"); c.width = 128; c.height = 64;
+  const x = c.getContext("2d"); x.font = `600 ${px}px "IBM Plex Mono", monospace`; x.textAlign = "center"; x.textBaseline = "middle";
+  x.lineWidth = 6; x.strokeStyle = "rgba(255,255,255,0.85)"; x.strokeText(text, 64, 34); x.fillStyle = color; x.fillText(text, 64, 34);
+  return new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c), depthWrite:false}));
 }
 function sunVec(alt, az, r){ return new THREE.Vector3(r*Math.cos(alt)*Math.sin(az), r*Math.sin(alt), -r*Math.cos(alt)*Math.cos(az)); }
 function paint3D(i){
@@ -1051,9 +1081,10 @@ function paint3D(i){
   const R = state.res.R, o = R3.objs, mode = $("view3d").value;
   const alt = R.alt[i], az = R.az[i];
   const up = alt > 0;
-  const v = sunVec(Math.max(alt, 0.02), az, 45);
+  const v = sunVec(Math.max(alt, 0.02), az, 45), vb = sunVec(Math.max(alt, 0.02), az, SUN_R);
   R3.sun.position.copy(v); R3.sun.intensity = up ? 0.35 + 0.75*Math.min(1, Math.sin(alt)*1.6) : 0.0;
-  R3.sunBall.position.copy(v); R3.sunBall.visible = up;
+  R3.sunBall.position.copy(vb); R3.sunBall.visible = up;
+  R3.sunRay.geometry.setFromPoints([vb, new THREE.Vector3(0, 2*FLOOR_H, 0)]); R3.sunRay.computeLineDistances(); R3.sunRay.visible = up;
   const T = [R.T1[i], R.T2[i]];
   o.walls.forEach((w, k) => {
     if (mode === "indoor"){ w.material.color.set(0xd9d4cc); w.material.opacity = 0.18; w.material.depthWrite = false; }
